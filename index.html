@@ -563,6 +563,12 @@ $("of-q").addEventListener("input", () => { clearTimeout(timer); timer = setTime
 function initAuth() {
   if (!window.supabase) return;
   sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const mb = /^#baja=([0-9a-f-]{36})$/i.exec(location.hash);
+  if (mb) sb.rpc("baja_avisos", { p_token: mb[1] }).then(({ data, error }) => {
+    const d = document.createElement("div"); d.className = "panel"; d.setAttribute("role", "status"); d.style.cssText = "margin:.8rem auto;max-width:60rem";
+    d.textContent = error || !data ? "No hemos podido dar de baja los avisos con este enlace. Puedes desactivarlos en Mi apartado." : "Listo: ya no recibirás avisos por email. Puedes volver a activarlos en Mi apartado.";
+    document.body.prepend(d); history.replaceState(null, "", location.pathname + location.search);
+  });
   sb.auth.onAuthStateChange(ev => { if (ev === "PASSWORD_RECOVERY") { RECOVERY = true; if (READY) { show("auth"); authMode("nueva"); } } });
 }
 const AU = { login: ["Entrar", "Entrar", "Crear cuenta", "registro"], registro: ["Crear cuenta", "Crear cuenta", "Ya tengo cuenta", "login"], olvido: ["Recuperar contraseña", "Enviar enlace", "Volver", "login"], nueva: ["Nueva contraseña", "Guardar contraseña", "", "login"] };
@@ -642,7 +648,8 @@ async function renderApartado() {
   if (!idn) {
     $("analisis").hidden = true; $("acc-box").innerHTML = "";
     $("perfil").innerHTML = `<h2>Identifícate</h2><p style="margin:0 0 .75rem">Escribe tu nombre exactamente como sale en las listas oficiales: apellidos, una coma y el nombre. <strong>No se podrá cambiar después.</strong></p>
-      <div class="filters"><label>Tu nombre <input id="n-nom" type="text" autocomplete="off" placeholder="APELLIDO1 APELLIDO2, NOMBRE" style="min-width:min(22rem,80vw)"></label><button class="btn" id="n-ok">Confirmar</button></div><p class="note" id="n-msg" role="status"></p>`;
+      <div class="filters"><label>Tu nombre <input id="n-nom" type="text" autocomplete="off" placeholder="APELLIDO1 APELLIDO2, NOMBRE" style="min-width:min(22rem,80vw)"></label><button class="btn" id="n-ok">Confirmar</button></div>
+      <label style="display:flex;gap:.5rem;align-items:flex-start;margin:.2rem 0 .6rem;cursor:pointer"><input type="checkbox" id="n-av" style="margin-top:.25rem"><span>Quiero recibir por email un aviso cuando salgan plazas ofertadas en mis bolsas (opcional; puedes cambiarlo cuando quieras).</span></label><p class="note" id="n-msg" role="status"></p>`;
     $("n-ok").onclick = async () => {
       const nom = $("n-nom").value.trim(), msg = s => { $("n-msg").textContent = s; };
       if (nom.length < 6) return msg("Escribe tu nombre completo: apellidos, una coma y el nombre.");
@@ -650,7 +657,7 @@ async function renderApartado() {
       msg("Buscando en las listas…");
       const { data, error } = await sb.rpc("reclamar_nombre", { p_nombre: nom });
       if (error) return msg("No se pudo comprobar: " + error.message);
-      if (data === "ok" || data === "ya_tiene") return pedirEsp();
+      if (data === "ok" || data === "ya_tiene") { if ($("n-av").checked) { try { await sb.from("perfiles").upsert({ id: USER.id, avisos: true }); } catch (e) {} } return pedirEsp(); }
       msg(data === "ambiguo" ? "Hay más de una persona con ese nombre y todavía no podemos distinguirte. Escríbenos y lo resolvemos." : data === "no_encontrado" ? "No encontramos ese nombre en las listas. Escríbelo como aparece en el PDF: apellidos, coma y nombre." : "Vuelve a entrar con tu cuenta.");
     };
     return;
@@ -659,11 +666,17 @@ async function renderApartado() {
   let espMia = [];
   try { espMia = ((await sb.from("perfiles").select("esp_maestros").eq("id", USER.id).maybeSingle()).data || {}).esp_maestros || []; } catch (e) {}
   const espTxt = espMia.map(c => { const e = ESPU.find(x => x.codigo === c); return `<span class="tag" style="margin:.15rem .25rem 0 0">${esc(c)} · ${esc(e ? e.nombre : "")}</span>`; }).join("");
-  $("perfil").innerHTML = `<div class="note" style="margin:0">Tu nombre en las listas</div><div class="big" style="font-size:1.6rem">${esc(idn)}</div>${espTxt ? `<div class="note" style="margin:.5rem 0 0">Tus especialidades de Maestros</div><div>${espTxt}</div>` : ""}<p class="note">Si hay un error en tu nombre o especialidades, escríbenos para corregirlo.</p>`
+  $("perfil").innerHTML = `<div class="note" style="margin:0">Tu nombre en las listas</div><div class="big" style="font-size:1.6rem">${esc(idn)}</div>${espTxt ? `<div class="note" style="margin:.5rem 0 0">Tus especialidades de Maestros</div><div>${espTxt}</div>` : ""}<p class="note">Si hay un error en tu nombre o especialidades, escríbenos para corregirlo.</p>
+    <label style="display:flex;gap:.5rem;align-items:flex-start;margin-top:.7rem;cursor:pointer"><input type="checkbox" id="av-chk" style="margin-top:.25rem" disabled><span>Avisarme por email cuando salgan plazas ofertadas en mis bolsas</span></label><p class="note" id="av-msg" role="status" style="margin:.2rem 0 0"></p>`
     + (ADMIN ? `<button class="btn" id="adesp" style="margin-top:.4rem">Administrador: cambiar mis especialidades</button>` : "")
     + (ADMIN ? `<details style="margin-top:.6rem"><summary class="note" style="cursor:pointer">Administrador: ver la web como otra persona</summary>
       <div class="filters" style="margin-top:.5rem"><label>Nombre en las listas <input id="adn-nom" type="text" autocomplete="off" placeholder="APELLIDO1 APELLIDO2, NOMBRE" style="min-width:min(22rem,80vw)"></label><button class="btn" id="adn-ok">Cambiar</button></div>
       <p class="note" style="margin:.6rem 0 .2rem">Ver cómo lo ve un usuario con el cobro activado:</p><div class="filters"><button class="btn" id="sim-p">Prueba (5 días)</button><button class="btn" id="sim-f">Prueba terminada</button><button class="btn" id="sim-n">Quitar simulación</button></div><p class="note" id="adn-msg" role="status"></p></details>` : "");
+  try {
+    const pf = (await sb.from("perfiles").select("avisos").eq("id", USER.id).maybeSingle()).data;
+    const chk = $("av-chk"); chk.checked = !!(pf && pf.avisos === true); chk.disabled = false;
+    chk.onchange = async () => { const { error } = await sb.from("perfiles").upsert({ id: USER.id, avisos: chk.checked }); $("av-msg").textContent = error ? "No se pudo guardar: " + error.message : (chk.checked ? "Avisos activados." : "Avisos desactivados."); };
+  } catch (e) {}
   if (ADMIN && $("adesp")) $("adesp").onclick = () => pedirEsp(true);
   if (ADMIN) { $("sim-p").onclick = () => { SIM = "prueba"; renderApartado(); }; $("sim-f").onclick = () => { SIM = "fin"; renderApartado(); }; $("sim-n").onclick = () => { SIM = null; renderApartado(); }; }
   if (ADMIN) $("adn-ok").onclick = async () => {
