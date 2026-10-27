@@ -115,6 +115,8 @@ details.panel[open]>summary{margin-bottom:.8rem}
 .feat div{display:flex;gap:.7rem;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:.9rem;padding:.8rem .9rem}
 .feat i{font-style:normal;font-size:1.6rem;line-height:1}.feat b{display:block}.feat span{font-size:.9rem;color:var(--muted)}
 .hero{border-radius:1.1rem;padding:1.2rem 1.2rem 1rem;margin:0 0 1rem;color:#fff;background:linear-gradient(135deg,#0B4F6C,#0F7B8A);box-shadow:0 6px 22px rgba(11,79,108,.28)}
+.hero-of{background:linear-gradient(135deg,#B45309,#D97706);box-shadow:0 6px 22px rgba(180,83,9,.25)}
+.hero-of .pv{font-size:.9rem;margin:.7rem 0 0;opacity:.95}
 .hero .k{font:700 .85rem var(--body);letter-spacing:.06em;text-transform:uppercase;opacity:.9}
 .hero .h{font:800 clamp(1.5rem,6vw,2.1rem)/1.1 var(--display);margin:.2rem 0 .7rem}
 .hero .g{display:grid;grid-template-columns:repeat(auto-fit,minmax(8rem,1fr));gap:.6rem}
@@ -183,6 +185,8 @@ details.panel[open]>summary{margin-bottom:.8rem}
     <div class="top"><div class="brand">Docents<b>CV</b></div><button class="link" data-go="home">← Inicio</button></div>
     <h1>Consulta</h1>
     <div class="hero" id="hero"><div class="k">Adjudicaciones continuas</div><div class="h">Cargando las últimas adjudicaciones…</div></div>
+
+    <div class="hero hero-of" id="of-hero" hidden></div>
 
     <details class="panel" id="of-panel" open hidden>
       <summary id="of-sum">Plazas ofertadas</summary>
@@ -511,13 +515,23 @@ const ofertaVigente = () => !!(OFER && OFER.fecha && OFER.fecha > ultFechaContin
 const alcanceUlt = esp => { const g = famDe(esp) === "maestros" ? "maestros" : "otros", u = ULT[g]; if (!u || !u.ins) return null; const ps = u.rows.filter(r => r.especialidad_codigo === esp).map(r => r.posicion); return ps.length ? { f: u.ins.fecha, p: Math.max(...ps) } : { f: u.ins.fecha, p: null }; };
 async function ofertasInit() {
   const o = await cargarOfertas();
-  if (!o.fecha) { $("of-panel").hidden = true; return; }
+  if (!o.fecha) { $("of-panel").hidden = true; $("of-hero").hidden = true; return; }
   $("of-panel").hidden = false;
+  ofResumen(o);
   const vig = ofertaVigente();
   $("of-sum").textContent = (vig ? "Plazas que se ofertan en la próxima adjudicación" : "Plazas ofertadas") + " · " + fmtF(o.fecha);
   const cus = [...new Set(o.rows.map(r => r.cuerpo))];
   $("of-cuerpo").innerHTML = '<option value="">Todos los cuerpos</option>' + cus.map(c => `<option value="${esc(c)}">${esc(cuerpoNombre(c))}</option>`).join("");
   ofEsp(); ofPintar();
+}
+function ofResumen(o) {
+  const R = o.rows, n = R.length, nm = R.filter(r => r.cuerpo === "maestros").length, nv = R.filter(r => r.tipo === "vacante").length;
+  const cen = new Set(R.map(r => r.centro_codigo)).size, esp = new Set(R.map(r => r.especialidad_codigo)).size;
+  const pv = {}; R.forEach(r => { const p = r.provincia || "—"; pv[p] = (pv[p] || 0) + 1; });
+  const pvt = Object.entries(pv).sort((a, b) => b[1] - a[1]).map(([p, c]) => `${esc(p)}: <b>${c}</b>`).join(" · ");
+  const t = (b, s) => `<div><b>${b}</b><small>${s}</small></div>`;
+  $("of-hero").innerHTML = `<div class="k">${ofertaVigente() ? "Próxima adjudicación" : "Última oferta de plazas"} · ${fmtF(o.fecha)}</div><div class="h">${n} plaza${n === 1 ? "" : "s"} ofertada${n === 1 ? "" : "s"}</div><div class="g">${t(nm, "Maestros")}${t(n - nm, "Secundaria y otros")}${t(nv, "vacantes")}${t(n - nv, "sustituciones")}${t(cen, "centros")}${t(esp, "especialidades")}</div><p class="pv">Por provincia — ${pvt}</p>`;
+  $("of-hero").hidden = false;
 }
 function ofEsp() {
   const cu = $("of-cuerpo").value, es = new Map();
