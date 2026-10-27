@@ -240,6 +240,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
       <div style="display:flex;flex-direction:column;gap:.75rem">
         <label id="au-l-mail">Correo electrónico <input id="au-mail" type="email" autocomplete="email"></label>
         <label id="au-l-pass">Contraseña <input id="au-pass" type="password" autocomplete="current-password" placeholder="Mínimo 8 caracteres"></label>
+        <label id="au-l-ok" hidden style="flex-direction:row;gap:.5rem;align-items:flex-start;font-size:.92rem"><input type="checkbox" id="au-ok" style="min-width:0;margin-top:.25rem"><span>He leído y acepto la <a href="privacidad.html" target="_blank" rel="noopener">política de privacidad y las condiciones de uso</a>.</span></label>
         <button class="btn" id="au-go">Entrar</button>
       </div>
       <p class="note" id="au-msg" role="status"></p>
@@ -285,7 +286,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
     </div>
   </main>
 
-  <footer>DocentsCV es un proyecto independiente, no vinculado a la Conselleria. Fuente: listados oficiales de adjudicación de inicio de curso. No se muestran nombres de personas.</footer>
+  <footer>DocentsCV es un proyecto independiente, no vinculado a la Conselleria. Fuente: listados oficiales de adjudicación de inicio de curso. No se muestran nombres de personas. · <a href="privacidad.html" target="_blank" rel="noopener">Privacidad y condiciones</a></footer>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
@@ -481,7 +482,7 @@ function authMode(m) {
   AUTH_MODE = m; const a = AU[m];
   $("au-title").textContent = a[0]; $("au-go").textContent = a[1];
   $("au-alt").textContent = a[2]; $("au-alt").hidden = !a[2]; $("au-alt").dataset.m = a[3];
-  $("au-l-mail").hidden = m === "nueva"; $("au-l-pass").hidden = m === "olvido";
+  $("au-l-mail").hidden = m === "nueva"; $("au-l-ok").hidden = m !== "registro"; $("au-l-pass").hidden = m === "olvido";
   $("au-forgot").hidden = m !== "login"; $("au-msg").textContent = "";
   $("au-pass").autocomplete = m === "login" ? "current-password" : "new-password";
 }
@@ -494,10 +495,11 @@ $("au-go").onclick = async () => {
   const back = location.origin + location.pathname;
   if (AUTH_MODE !== "nueva" && !/^\S+@\S+\.\S+$/.test(mail)) return msg("Escribe un correo válido.");
   if (AUTH_MODE !== "olvido" && pass.length < 8) return msg("La contraseña debe tener al menos 8 caracteres.");
+  if (AUTH_MODE === "registro" && !$("au-ok").checked) return msg("Para crear la cuenta debes aceptar la política de privacidad y las condiciones.");
   msg("Un momento…");
   try {
     if (AUTH_MODE === "login") { const { error } = await sb.auth.signInWithPassword({ email: mail, password: pass }); if (error) throw error; show("apartado"); }
-    else if (AUTH_MODE === "registro") { const { data, error } = await sb.auth.signUp({ email: mail, password: pass, options: { emailRedirectTo: back } }); if (error) throw error; if (data.session) show("apartado"); else msg("Te hemos enviado un correo. Pulsa el enlace para confirmar tu cuenta y después entra."); }
+    else if (AUTH_MODE === "registro") { const { data, error } = await sb.auth.signUp({ email: mail, password: pass, options: { emailRedirectTo: back, data: { acepta_privacidad: new Date().toISOString(), version_privacidad: "2026-10" } } }); if (error) throw error; if (data.session) show("apartado"); else msg("Te hemos enviado un correo. Pulsa el enlace para confirmar tu cuenta y después entra."); }
     else if (AUTH_MODE === "olvido") { const { error } = await sb.auth.resetPasswordForEmail(mail, { redirectTo: back }); if (error) throw error; msg("Si el correo existe, recibirás un enlace para crear una nueva contraseña."); }
     else { const { error } = await sb.auth.updateUser({ password: pass }); if (error) throw error; RECOVERY = false; show("apartado"); }
   } catch (e) { msg("No se pudo completar: " + errEs(e)); }
