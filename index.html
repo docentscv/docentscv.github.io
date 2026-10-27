@@ -202,6 +202,19 @@ details.panel[open]>summary{margin-bottom:.8rem}
       <div id="of-body"></div>
     </details>
 
+    <details class="panel" id="dc-panel" open hidden>
+      <summary id="dc-sum">Plazas de difícil cobertura</summary>
+      <p class="note" style="margin:.2rem 0 .6rem">Son plazas que nadie cogió en la adjudicación continua. Se ofrecen también a personas que no están en la bolsa y a quienes sí están y quieren cogerlas.</p>
+      <div class="filters">
+        <label>Cuerpo <select id="dc-cuerpo"></select></label>
+        <label>Especialidad <select id="dc-esp"></select></label>
+        <label>Provincia <select id="dc-prov"><option value="">Todas</option><option>Alicante</option><option>Castelló</option><option>València</option></select></label>
+        <label>Localidad o centro <input id="dc-q" type="search" placeholder="Filtrar"></label>
+      </div>
+      <p class="note" id="dc-info" style="margin:.2rem 0 .5rem"></p>
+      <div id="dc-body"></div>
+    </details>
+
     <details class="panel" id="ul-panel" open>
       <summary>Últimas adjudicaciones</summary>
       <div class="filters">
@@ -275,6 +288,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
     <div id="analisis" hidden>
       <p class="note" id="s-aviso" style="margin:0 0 .6rem"></p>
       <div id="s-cards"></div>
+      <div class="panel" id="dc-mi" hidden><h2>Plazas de difícil cobertura en tus bolsas</h2><div id="dc-mi-body"></div></div>
       <div class="panel" id="oport-panel"><h2>Tus oportunidades por centro</h2>
         <p class="note" style="margin:0 0 .6rem">Elige un centro de las últimas adjudicaciones y mira, tanda a tanda, si habrías ido por delante de la persona que se llevó esa plaza. «Por delante» significa que, si la hubieras pedido, te habría correspondido antes a ti (siempre que no te dieran otra que prefieres más). Cuando carguemos los PDF de las plazas que ofertará la Conselleria, aparecerán también en este desplegable.</p>
         <div id="oport-body"></div></div>
@@ -313,6 +327,14 @@ details.panel[open]>summary{margin-bottom:.8rem}
         <button class="btn" id="ad-up">Subir adjudicaciones</button>
       </div>
       <p class="note" id="ad-msg" role="status" style="margin:0 0 1rem"></p>
+
+      <h2>3. Subir PDF de plazas de difícil cobertura</h2>
+      <p class="note" style="margin:0 0 .5rem">El listado «Llocs de difícil cobertura convocats en el procediment» (archivo <b>AAMMDD_pue_def.pdf</b>, por ejemplo 261023_pue_def.pdf).</p>
+      <div class="filters">
+        <label>Archivo PDF <input id="df-file" type="file" accept="application/pdf"></label>
+        <button class="btn" id="df-up">Subir difícil cobertura</button>
+      </div>
+      <p class="note" id="df-msg" role="status" style="margin:0 0 1rem"></p>
 
       <h2>Últimas cargas</h2>
       <div class="scroll"><table><thead><tr><th>Archivo</th><th>Tipo</th><th>Cuerpo</th><th>Estado</th><th>Fecha</th></tr></thead><tbody id="ad-rows"></tbody></table></div>
@@ -448,7 +470,7 @@ async function consultaInit() {
     $("hero").innerHTML = `<div class="k">Adjudicaciones continuas</div><div class="h">Última tanda: ${fmtF(ult)}</div>
       <div class="g"><div><b>${enUlt(m) + enUlt(o)}</b><small>plazas adjudicadas en la última tanda</small></div><div><b>${m.rows.length}</b><small>Maestros (última lista, ${m.ins ? fmtF(m.ins.fecha) : "—"})</small></div><div><b>${o.rows.length}</b><small>Secundaria y otros (última lista, ${o.ins ? fmtF(o.ins.fecha) : "—"})</small></div><div><b>${tandasN}</b><small>fechas con adjudicaciones este curso</small></div></div>`;
     $("home-stats").innerHTML = `<div><b>${enUlt(m) + enUlt(o)}</b><small>plazas adjudicadas en la última tanda</small></div><div><b>${fmtF(ult).slice(0, 5)}</b><small>última tanda (${fmtF(ult).slice(6)})</small></div><div><b>${tandasN}</b><small>fechas con adjudicaciones este curso</small></div>`;
-    ultimas(); ofertasInit();
+    ultimas(); ofertasInit(); difInit();
   } catch (e) { $("hero").innerHTML = `<div class="h">No se pudieron cargar las adjudicaciones</div><div>${esc(e.message)}</div>`; }
 }
 async function ultimas() {
@@ -540,6 +562,55 @@ function ofResumen(o) {
   const t = (b, s) => `<div><b>${b}</b><small>${s}</small></div>`;
   $("of-hero").innerHTML = `<div class="k">${ofertaVigente() ? "Próxima adjudicación" : "Última oferta de plazas"} · ${fmtF(o.fecha)}</div><div class="h">${n} plaza${n === 1 ? "" : "s"} ofertada${n === 1 ? "" : "s"}</div><div class="g">${t(nm, "Maestros")}${t(n - nm, "Secundaria y otros")}${t(nv, "vacantes")}${t(n - nv, "sustituciones")}${t(cen, "centros")}${t(esp, "especialidades")}</div><p class="pv">Por provincia — ${pvt}</p>`;
   $("of-hero").hidden = false;
+}
+/* ---------- Plazas de difícil cobertura ---------- */
+let DIF = null;
+async function cargarDif() {
+  if (DIF) return DIF;
+  try {
+    const f = await getJ("plazas_dificil?select=fecha&order=fecha.desc&limit=1");
+    if (!f.length) return (DIF = { fecha: null, rows: [] });
+    const rows = await getJ(`plazas_dificil?select=cuerpo,especialidad_codigo,provincia,localidad,centro_codigo,centro,tipo,detalle,codigo_plaza,req_ling,observ&fecha=eq.${f[0].fecha}&order=especialidad_codigo.asc&limit=1000`);
+    await cargarCentros(rows.map(r => r.centro_codigo));
+    rows.forEach(r => { const c = CEN[r.centro_codigo]; if (c) { r.centro = c.nombre || r.centro; r.localidad = c.localidad || r.localidad; r.provincia = c.provincia || r.provincia; } });
+    return (DIF = { fecha: f[0].fecha, rows });
+  } catch (e) { return (DIF = { fecha: null, rows: [] }); }
+}
+const difItem = r => `<div class="it"><div class="a"><b>${esc(r.centro || r.centro_codigo)}</b><small>${esc(r.localidad || "")}${r.req_ling ? " · req. " + esc(r.req_ling.replace(/\.$/, "")) : ""}${r.observ ? " · " + esc(r.observ) : ""}</small></div><div class="z"><span class="tag">${r.tipo === "vacante" ? "Vacante" : "Sustitución"}</span></div></div>`;
+async function difInit() {
+  const o = await cargarDif();
+  if (!o.fecha) { $("dc-panel").hidden = true; return; }
+  $("dc-panel").hidden = false; $("dc-sum").textContent = "Plazas de difícil cobertura · " + fmtF(o.fecha);
+  const cus = [...new Set(o.rows.map(r => r.cuerpo))];
+  $("dc-cuerpo").innerHTML = '<option value="">Todos los cuerpos</option>' + cus.map(c => `<option value="${esc(c)}">${esc(cuerpoNombre(c))}</option>`).join("");
+  difEsp(); difPintar();
+}
+function difEsp() {
+  const cu = $("dc-cuerpo").value, es = new Map();
+  DIF.rows.filter(r => !cu || r.cuerpo === cu).forEach(r => es.set(r.especialidad_codigo, 1));
+  $("dc-esp").innerHTML = '<option value="">Todas las especialidades</option>' + [...es.keys()].sort().map(c => `<option value="${esc(c)}">${esc(espNom("", c))}</option>`).join("");
+}
+function difPintar() {
+  const cu = $("dc-cuerpo").value, es = $("dc-esp").value, pv = $("dc-prov").value, q = $("dc-q").value.trim().toLowerCase();
+  const fil = DIF.rows.filter(r => (!cu || r.cuerpo === cu) && (!es || r.especialidad_codigo === es) && (!pv || r.provincia === pv) && (!q || ((r.centro || "") + " " + (r.localidad || "")).toLowerCase().includes(q)));
+  const nv = fil.filter(r => r.tipo === "vacante").length;
+  $("dc-info").innerHTML = `<strong>${fil.length}</strong> plaza${fil.length === 1 ? "" : "s"} (${nv} vacante${nv === 1 ? "" : "s"}, ${fil.length - nv} sustitucion${fil.length - nv === 1 ? "" : "es"}).`;
+  const gr = new Map(); fil.forEach(r => { if (!gr.has(r.especialidad_codigo)) gr.set(r.especialidad_codigo, []); gr.get(r.especialidad_codigo).push(r); });
+  $("dc-body").innerHTML = fil.length ? [...gr].map(([e, rs]) => `<div class="note" style="margin:.9rem 0 .2rem"><strong>${esc(espNom("", e))}</strong> — ${rs.length} plaza${rs.length === 1 ? "" : "s"}</div>` + rs.map(difItem).join("")).join("") : '<p class="note">No hay plazas con esos filtros.</p>';
+}
+$("dc-cuerpo").addEventListener("change", () => { difEsp(); difPintar(); });
+["dc-esp", "dc-prov"].forEach(id => $(id).addEventListener("change", difPintar));
+$("dc-q").addEventListener("input", () => { clearTimeout(window.__dcT); window.__dcT = setTimeout(difPintar, 300); });
+async function difMias(pan, espMia) {
+  const o = await cargarDif();
+  if (!o.fecha) { $("dc-mi").hidden = true; return; }
+  const bol = new Set(pan.filter(r => r.cuerpo !== "maestros").map(r => r.cuerpo + "|" + r.bolsa));
+  const mias = o.rows.filter(r => r.cuerpo === "maestros" ? (espMia || []).includes(r.especialidad_codigo) : bol.has(r.cuerpo + "|" + r.especialidad_codigo));
+  $("dc-mi").hidden = false;
+  if (!mias.length) { $("dc-mi-body").innerHTML = `<p class="note" style="margin:0">En la última publicación (${fmtF(o.fecha)}) no hay plazas de difícil cobertura en tus bolsas.</p>`; return; }
+  const gr = new Map(); mias.forEach(r => { if (!gr.has(r.especialidad_codigo)) gr.set(r.especialidad_codigo, []); gr.get(r.especialidad_codigo).push(r); });
+  $("dc-mi-body").innerHTML = `<p class="note" style="margin:0 0 .4rem">Publicadas el ${fmtF(o.fecha)}. Son plazas que nadie cogió en la adjudicación continua; también pueden pedirlas quienes no están en la bolsa.</p>`
+    + [...gr].map(([e, rs]) => `<div class="note" style="margin:.8rem 0 .2rem"><strong>${esc(espNom("", e))}</strong> — ${rs.length} plaza${rs.length === 1 ? "" : "s"}</div>` + rs.map(difItem).join("")).join("");
 }
 function ofEsp() {
   const cu = $("of-cuerpo").value, es = new Map();
@@ -725,6 +796,7 @@ function subirPdf(tipo, fileId, msgId, cuerpoFn) {
   };
 }
 $("of-up").onclick = subirPdf("ofertas", "of-file", "of-msg", () => "todos");
+$("df-up").onclick = subirPdf("dificil", "df-file", "df-msg", () => "todos");
 $("ad-up").onclick = subirPdf("continua", "ad-file", "ad-msg", () => $("ad-cuerpo").value);
 
 const EST_TXT = {
@@ -902,7 +974,7 @@ async function situacion() {
   $("s-cards").innerHTML = pan.length
     ? pan.map(r => tarjeta(r, histDe(r), r.cuerpo === "maestros" ? alc : null)).join("")
     : '<div class="panel">No hemos encontrado tu nombre en las listas cargadas.</div>';
-  oportunidades(pan, esp);
+  oportunidades(pan, esp); difMias(pan, esp);
   const ult = pan.length ? pan.map(r => r.ult_tanda).sort().pop() : null;
   $("s-aviso").textContent = ult ? `Datos hasta la lista de adjudicaciones continuas del ${fmtF(ult)}.` : "";
 
