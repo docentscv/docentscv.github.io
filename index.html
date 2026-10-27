@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DocentsCV – Adjudicaciones para el profesorado interino</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EDF1F6; --surface:#FFFFFF; --ink:#14233A; --muted:#55657C; --line:#CBD5E1;
+  --accent:#0F7B8A; --mark:#F6D365; --mark-ink:#3A2C00; --warn-bg:#FFF4D6; --warn-ink:#5B4300; --err:#B3261E;
+  --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif; --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --paper:#0F1B2D; --surface:#17263C; --ink:#E6EDF7; --muted:#9DB0C8; --line:#2C3E57;
+  --accent:#4FC1D0; --mark:#E7C04B; --mark-ink:#2A1F00; --warn-bg:#3A2F10; --warn-ink:#F2DDA0; --err:#FF8A80; color-scheme:dark;}}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 1rem/1.6 var(--body);padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+.wrap{max-width:62rem;margin:0 auto;padding:0 1.25rem}
+[hidden]{display:none!important}
+/* logo y pantalla de carga */
+.brand{display:flex;align-items:center;gap:.6rem;font:700 1.35rem var(--display);letter-spacing:-.02em}
+.brand svg{width:2rem;height:2rem}
+.brand b{color:var(--accent)}
+#splash{position:fixed;inset:0;z-index:20;background:var(--paper);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.2rem;transition:opacity .4s}
+#splash.out{opacity:0;pointer-events:none}
+#splash svg{width:5.5rem;height:5.5rem;animation:pop .7s ease-out both}
+#splash .name{font:700 2.4rem var(--display);letter-spacing:-.03em}
+#splash .name b{color:var(--accent)}
+.bar{width:9rem;height:.28rem;background:var(--line);border-radius:1rem;overflow:hidden}
+.bar i{display:block;height:100%;width:40%;background:var(--accent);border-radius:1rem;animation:slide 1s ease-in-out infinite}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes slide{from{transform:translateX(-100%)}to{transform:translateX(250%)}}
+@media (prefers-reduced-motion:reduce){#splash svg,.bar i{animation:none}}
+/* cabecera de pantallas */
+.top{display:flex;justify-content:space-between;align-items:center;padding:1.1rem 0}
+.link{background:none;border:0;color:var(--accent);font:600 1rem var(--body);cursor:pointer;padding:.3rem 0}
+h1{font:700 clamp(1.9rem,5.5vw,3rem)/1.05 var(--display);letter-spacing:-.03em;margin:.5rem 0 .75rem;max-width:20ch}
+h2{font:700 1.3rem var(--display);margin:0 0 .5rem}
+.lead{font-size:1.1rem;color:var(--muted);max-width:54ch;margin:0 0 1.5rem}
+/* inicio */
+.choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(16rem,1fr));gap:1rem;margin:1.5rem 0}
+.choice{text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:.9rem;padding:1.3rem;cursor:pointer;color:var(--ink);font:inherit}
+.choice:hover{border-color:var(--accent)}
+.choice strong{display:block;font:700 1.35rem var(--display);margin-bottom:.3rem}
+.choice span{color:var(--muted)}
+.choice.main{border-color:var(--accent);border-width:2px}
+/* paneles y formularios */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:.75rem;padding:1.1rem;margin-bottom:1rem}
+.banner{background:var(--warn-bg);color:var(--warn-ink);padding:.6rem .9rem;border-radius:.5rem;font-size:.92rem;margin-bottom:1rem}
+.filters{display:flex;flex-wrap:wrap;gap:.75rem;margin-bottom:1rem;align-items:flex-end}
+label{display:flex;flex-direction:column;font-size:.85rem;color:var(--muted);gap:.25rem;font-weight:500}
+select,input{font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:.5rem;padding:.5rem .65rem;min-width:9.5rem}
+select:focus-visible,input:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;min-width:32rem}
+th,td{text-align:left;padding:.5rem .7rem;border-bottom:1px solid var(--line)}
+th{font-size:.85rem;color:var(--muted);font-weight:600}
+.n{text-align:right}
+tr.reach td{background:color-mix(in srgb,var(--mark) 35%,transparent)}
+.tag{display:inline-block;background:var(--mark);color:var(--mark-ink);border-radius:.35rem;padding:0 .4rem;font-size:.8rem;font-weight:600}
+.note{font-size:.9rem;color:var(--muted);margin:.6rem 0 0}
+.err{color:var(--err);font-weight:500}
+.btn{background:var(--accent);color:var(--paper);border:0;border-radius:.5rem;padding:.6rem 1.1rem;font:600 1rem var(--body);cursor:pointer}
+.me{display:flex;flex-wrap:wrap;gap:1.5rem;align-items:center;justify-content:space-between}
+.big{font:700 2.2rem var(--display);letter-spacing:-.02em}
+ul.l li{margin:.3rem 0}
+h3,h4{margin:0}
+footer{padding:2rem 0 3rem;color:var(--muted);font-size:.9rem;border-top:1px solid var(--line);margin-top:2rem}
+
+.pt{cursor:pointer;outline:none}.pt .tip{display:none}.pt:hover .tip,.pt:focus .tip{display:block}.pt:hover .d,.pt:focus .d{r:5.5}
+
+.op-b{border-radius:1rem;padding:1.1rem 1.2rem;margin:.2rem 0 .9rem;border:3px solid var(--c);background:var(--cb);color:var(--ink);box-shadow:0 6px 22px rgba(20,35,58,.18)}
+.op-b .k{font:800 .95rem var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--c)}
+.op-b .h{font:800 clamp(1.5rem,6vw,2.2rem)/1.1 var(--display);color:var(--c);margin:.2rem 0 .35rem}
+.op-b .n{display:inline-block;font:800 2.6rem/1 var(--display);color:#fff;background:var(--c);border-radius:.7rem;padding:.2rem .7rem;margin:.1rem .4rem .3rem 0}
+.op-b p{margin:.2rem 0 0;font-size:1.02rem}
+@media (prefers-reduced-motion:no-preference){.op-b.go{animation:opp 1.8s ease-in-out infinite}}
+@keyframes opp{0%,100%{box-shadow:0 6px 22px rgba(20,35,58,.18),0 0 0 0 var(--c)}50%{box-shadow:0 6px 22px rgba(20,35,58,.18),0 0 0 9px transparent}}
+
+.it{display:flex;justify-content:space-between;gap:.8rem;align-items:center;padding:.65rem 0;border-top:1px solid var(--line)}
+.it:first-child{border-top:0}.it .a{min-width:0}.it .a b{display:block;font-weight:700;line-height:1.25}
+.it .a small{display:block;color:var(--muted);font-size:.85rem;line-height:1.3;margin-top:.1rem}
+.it .z{text-align:right;flex:none}.it .z .pos-b{font-size:1.25rem;min-width:3.6rem}.it .z small{display:block;color:var(--muted);font-size:.78rem;margin-top:.2rem}
+details.panel>summary{cursor:pointer;font:700 1.25rem var(--display);list-style:none;display:flex;align-items:center;gap:.7rem}
+details.panel>summary::-webkit-details-marker{display:none}
+details.panel>summary::before{content:"";flex:none;width:1.9rem;height:1.9rem;border-radius:50%;background:var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 5l7 7-7 7' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/62% no-repeat;transition:transform .2s}
+details.panel[open]>summary::before{transform:rotate(90deg)}
+details.panel>summary:hover::before{filter:brightness(1.15)}
+details.panel[open]>summary{margin-bottom:.8rem}
+
+.home-hero{position:relative;overflow:hidden;border-radius:1.4rem;padding:1.6rem 1.4rem 1.3rem;margin:.4rem 0 1.2rem;color:#fff;background:radial-gradient(circle at 85% 10%,rgba(246,211,101,.35),transparent 45%),linear-gradient(135deg,#0A3F58,#0F7B8A);box-shadow:0 10px 30px rgba(11,79,108,.3)}
+.home-hero .k{font:700 .85rem var(--body);letter-spacing:.07em;text-transform:uppercase;opacity:.9}
+.home-hero h1{color:#fff;max-width:18ch;margin:.4rem 0 .6rem;font:800 clamp(2rem,7.5vw,3.4rem)/1.02 var(--display);letter-spacing:-.03em}
+.home-hero h1 em{font-style:normal;color:#F6D365}
+.home-hero p{font-size:1.12rem;max-width:44ch;margin:0 0 1.1rem;opacity:.95}
+.home-hero .g{display:grid;grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr));gap:.6rem}
+.home-hero .g div{background:rgba(255,255,255,.16);border-radius:.8rem;padding:.55rem .8rem}
+.home-hero .g b{display:block;font:800 2rem/1.05 var(--display)}.home-hero .g small{font-size:.8rem;opacity:.92}
+.choices{gap:1.1rem}
+.choice{position:relative;border-radius:1.1rem;padding:1.5rem 1.4rem 1.4rem;border:2px solid var(--line);box-shadow:0 4px 16px rgba(20,35,58,.08);transition:transform .15s,box-shadow .15s}
+.choice:hover{transform:translateY(-3px);box-shadow:0 10px 26px rgba(20,35,58,.16)}
+.choice .ic{display:grid;place-items:center;width:3.2rem;height:3.2rem;border-radius:.9rem;font-size:1.7rem;background:var(--paper);margin-bottom:.7rem}
+.choice strong{font-size:1.5rem}
+.choice span{display:block;line-height:1.5}
+.choice .go{display:block;margin-top:.9rem;font:700 1rem var(--body);color:var(--accent)}
+.choice.main{border-color:var(--accent);background:linear-gradient(180deg,var(--surface),var(--paper))}
+.choice.main .ic{background:var(--accent)}
+.choice .tag{position:absolute;top:-.7rem;right:1rem;font-size:.78rem;padding:.15rem .6rem;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+@media (prefers-reduced-motion:no-preference){.choice.main .tag{animation:opp 1.8s ease-in-out infinite;--c:var(--mark)}}
+.feat{display:grid;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));gap:.8rem;margin:0 0 1.2rem}
+.feat div{display:flex;gap:.7rem;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:.9rem;padding:.8rem .9rem}
+.feat i{font-style:normal;font-size:1.6rem;line-height:1}.feat b{display:block}.feat span{font-size:.9rem;color:var(--muted)}
+.hero{border-radius:1.1rem;padding:1.2rem 1.2rem 1rem;margin:0 0 1rem;color:#fff;background:linear-gradient(135deg,#0B4F6C,#0F7B8A);box-shadow:0 6px 22px rgba(11,79,108,.28)}
+.hero .k{font:700 .85rem var(--body);letter-spacing:.06em;text-transform:uppercase;opacity:.9}
+.hero .h{font:800 clamp(1.5rem,6vw,2.1rem)/1.1 var(--display);margin:.2rem 0 .7rem}
+.hero .g{display:grid;grid-template-columns:repeat(auto-fit,minmax(8rem,1fr));gap:.6rem}
+.hero .g div{background:rgba(255,255,255,.16);border-radius:.8rem;padding:.55rem .8rem}
+.hero .g b{display:block;font:800 2.1rem/1.05 var(--display)}
+.hero .g small{font-size:.8rem;opacity:.92}
+.pos-b{display:inline-block;min-width:3.2rem;text-align:center;background:var(--accent);color:#fff;font-weight:800;border-radius:.5rem;padding:.1rem .5rem}
+@media (prefers-color-scheme:dark){.pos-b{color:#08212B}}
+/* tarjeta de situación, llamativa */
+:root{--ok:#12804A;--ok-bg:#DDF5E7;--amb:#B25E00;--amb-bg:#FFEBCC;--blu:#0B6BB8;--blu-bg:#DCEEFC;--red:#B3261E;--red-bg:#FCE0DD;--gry:#55657C;--gry-bg:#E6EAF0}
+@media (prefers-color-scheme:dark){:root{--ok:#6EE0A3;--ok-bg:#12382A;--amb:#FFC566;--amb-bg:#3F2C0A;--blu:#7CC4FF;--blu-bg:#0F2F4D;--red:#FF9C94;--red-bg:#4A1B18;--gry:#B5C3D6;--gry-bg:#243349}}
+.sc{border-radius:1rem;overflow:hidden;border:2px solid var(--c);background:var(--surface);margin:0 0 1.1rem;box-shadow:0 4px 16px rgba(20,35,58,.12)}
+.sc-h{padding:.7rem 1rem;background:var(--c);color:#fff}
+.sc-h b{display:block;font:700 1.2rem var(--display)}.sc-h span{font-size:.85rem;opacity:.92}
+.sc-st{display:flex;gap:.7rem;align-items:center;padding:.9rem 1rem;background:var(--cb);color:var(--c);font:700 1.15rem var(--display)}
+.sc-st i{font-style:normal;font-size:1.8rem;line-height:1}
+.sc-st small{display:block;font:500 .85rem var(--body);color:var(--ink);margin-top:.1rem}
+.sc-k{display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:.6rem;padding:.9rem 1rem 0}
+.sc-k div{background:var(--paper);border-radius:.75rem;padding:.6rem .8rem;border-left:5px solid var(--c)}
+.sc-k small{display:block;font-size:.78rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+.sc-k b{display:block;font:800 2.6rem/1.05 var(--display);letter-spacing:-.03em;color:var(--ink)}
+.sc-k em{font-style:normal;font-weight:700;font-size:.9rem;color:var(--ok)}.sc-k em.dn{color:var(--red)}
+.sc-p{margin:.9rem 1rem 0;padding:.8rem 1rem;border-radius:.75rem;background:var(--pb);color:var(--pc);border:2px solid var(--pc)}
+.sc-p .t{font:700 .85rem var(--body);text-transform:uppercase;letter-spacing:.04em}
+.sc-p .v{font:800 2.2rem/1.1 var(--display)}
+.sc-p .bar{height:.7rem;border-radius:.4rem;background:rgba(127,127,127,.25);margin:.4rem 0}
+.sc-p .bar i{display:block;height:100%;border-radius:.4rem;background:var(--pc)}
+.sc-p .d{font-size:.9rem;color:var(--ink)}
+.sc-b{padding:.5rem 1rem 1rem}
+.sc-b .note{margin:.5rem 0 0}
+</style>
+</head>
+<body>
+
+<div id="splash" role="status" aria-label="Cargando DocentsCV">
+  <svg viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="12" fill="var(--accent)"/><path d="M12 15h24M12 24h17M12 33h10" stroke="var(--paper)" stroke-width="4" stroke-linecap="round"/><circle cx="36" cy="33" r="5" fill="var(--mark)"/></svg>
+  <div class="name">Docents<b>CV</b></div>
+  <div class="bar"><i></i></div>
+</div>
+
+<div class="wrap">
+  <div id="cfgerr" class="banner" hidden>Falta configurar la conexión: abre <code>index.html</code> y rellena SUPABASE_URL y SUPABASE_KEY.</div>
+
+  <!-- INICIO -->
+  <main id="v-home" class="view" hidden>
+    <div class="top"><div class="brand"><svg viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="12" fill="var(--accent)"/><path d="M12 15h24M12 24h17M12 33h10" stroke="var(--paper)" stroke-width="4" stroke-linecap="round"/><circle cx="36" cy="33" r="5" fill="var(--mark)"/></svg>Docents<b>CV</b></div></div>
+    <section class="home-hero">
+      <div class="k">Interinos · Comunitat Valenciana</div>
+      <h1>Descubre tus <em>opciones reales</em> de conseguir plaza</h1>
+      <p>Las últimas adjudicaciones al instante, tu posición en la bolsa y la probabilidad de que te toque.</p>
+      <div class="g" id="home-stats"><div><b>—</b><small>plazas en la última tanda</small></div><div><b>—</b><small>fecha de la última tanda</small></div></div>
+    </section>
+    <div class="choices">
+      <button class="choice" data-go="consulta"><div class="ic">🔎</div><strong>Consulta</strong><span>Últimas adjudicaciones y hasta qué posición se llega por especialidad y centro. Sin registro.</span><div class="go">Entrar →</div></button>
+      <button class="choice main" data-go="apartado"><span class="tag">Lo más útil</span><div class="ic">🎯</div><strong>Mi apartado</strong><span>Tu posición, cómo evoluciona, quién va por delante y tu <b>probabilidad de conseguir plaza</b>.</span><div class="go">Entrar →</div></button>
+    </div>
+    <div class="feat">
+      <div><i>⚡</i><p style="margin:0"><b>Siempre al día</b><span>Se actualiza con cada lista de la Conselleria.</span></p></div>
+      <div><i>📈</i><p style="margin:0"><b>Tu evolución</b><span>Gráficas de tu puesto en los últimos 2 meses.</span></p></div>
+      <div><i>🔒</i><p style="margin:0"><b>Datos oficiales</b><span>Sin nombres de personas en la consulta pública.</span></p></div>
+    </div>
+  </main>
+
+  <!-- CONSULTA -->
+  <main id="v-consulta" class="view" hidden>
+    <div class="top"><div class="brand">Docents<b>CV</b></div><button class="link" data-go="home">← Inicio</button></div>
+    <h1>Consulta</h1>
+    <div class="hero" id="hero"><div class="k">Adjudicaciones continuas</div><div class="h">Cargando las últimas adjudicaciones…</div></div>
+
+    <details class="panel" id="ul-panel" open>
+      <summary>Últimas adjudicaciones</summary>
+      <div class="filters">
+        <label>Lista <select id="ul-grupo"><option value="maestros">Maestros</option><option value="otros">Secundaria y otros cuerpos</option></select></label>
+        <label>Localidad o centro <input id="ul-q" type="search" placeholder="Filtrar esta lista"></label>
+      </div>
+      <p class="note" id="ul-fecha" style="margin:.2rem 0 .5rem"></p>
+      <div id="ul-rows"></div>
+      <p class="note" id="ul-msg" role="status"></p>
+      <button class="btn" id="ul-more" hidden>Ver más</button>
+    </details>
+
+    <details class="panel" id="bs-panel" open>
+      <summary>Busca por especialidad y centro</summary>
+      <p class="note" style="margin:0 0 .6rem">Mira cuál fue la última adjudicación y hasta qué posición se llegó en cada centro.</p>
+      <div class="filters">
+        <label>Cuerpo <select id="bs-cuerpo"></select></label>
+        <label>Especialidad <select id="bs-esp"></select></label>
+        <label>Centro o localidad <input id="bs-q" type="search" placeholder="Escribe y espera un momento"></label>
+      </div>
+      <div id="bs-body"></div>
+    </details>
+
+    <details class="panel" id="ini-panel"><summary>Adjudicación de inicio de curso (listado completo)</summary>
+    <div style="margin-top:.8rem">
+      <div class="filters">
+        <label>Cuerpo <select id="cuerpo"></select></label>
+        <label>Curso <select id="curso"></select></label>
+        <label>Especialidad <select id="esp"></select></label>
+        <label>Provincia <select id="prov"><option value="">Todas</option><option>Alicante</option><option>Castelló</option><option>València</option></select></label>
+        <label>Localidad o centro <input id="q" type="search" placeholder="Escribe y espera un momento"></label>
+        <label>Tu posición <input id="mypos" type="number" min="1" placeholder="Ej. 450"></label>
+      </div>
+      <div class="scroll"><table>
+        <thead><tr><th>Localidad</th><th>Centro</th><th>Plaza</th><th>Tipo</th><th class="n">Posición adjudicada</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table></div>
+      <p class="note" id="msg" role="status"></p>
+      <button class="btn" id="more" hidden>Ver más resultados</button>
+    </div>
+    <div class="panel" id="estpanel" hidden>
+      <h2>Hasta dónde se llegó</h2>
+      <ul class="l" id="est"></ul>
+      <p class="note">Estimación orientativa: la numeración cambia cada curso y la posición adjudicada no siempre coincide con el corte real de la bolsa.</p>
+    </div>
+    </details>
+  </main>
+
+  <!-- ACCESO -->
+  <main id="v-auth" class="view" hidden>
+    <div class="top"><div class="brand">Docents<b>CV</b></div><button class="link" data-go="home">← Inicio</button></div>
+    <h1 id="au-title">Entrar</h1>
+    <div class="panel" style="max-width:26rem">
+      <div style="display:flex;flex-direction:column;gap:.75rem">
+        <label id="au-l-mail">Correo electrónico <input id="au-mail" type="email" autocomplete="email"></label>
+        <label id="au-l-pass">Contraseña <input id="au-pass" type="password" autocomplete="current-password" placeholder="Mínimo 8 caracteres"></label>
+        <button class="btn" id="au-go">Entrar</button>
+      </div>
+      <p class="note" id="au-msg" role="status"></p>
+      <p class="note"><button class="link" id="au-alt">Crear cuenta</button> · <button class="link" id="au-forgot">He olvidado mi contraseña</button></p>
+    </div>
+  </main>
+
+  <!-- MI APARTADO -->
+  <main id="v-apartado" class="view" hidden>
+    <div class="top"><div class="brand">Docents<b>CV</b></div><div><span class="note" id="who"></span> <button class="link" id="ad-go" hidden>Administración</button> <button class="link" id="logout">Salir</button> · <button class="link" data-go="home">← Inicio</button></div></div>
+    <h1>Mi apartado</h1>
+    <div class="panel" id="perfil"></div>
+    <div id="acc-box"></div>
+    <div id="analisis" hidden>
+      <p class="note" id="s-aviso" style="margin:0 0 .6rem"></p>
+      <div id="s-cards"></div>
+      <div class="panel" id="oport-panel"><h2>Tus oportunidades por centro</h2>
+        <p class="note" style="margin:0 0 .6rem">Elige un centro de las últimas adjudicaciones y mira, tanda a tanda, si habrías ido por delante de la persona que se llevó esa plaza. «Por delante» significa que, si la hubieras pedido, te habría correspondido antes a ti (siempre que no te dieran otra que prefieres más). Cuando carguemos los PDF de las plazas que ofertará la Conselleria, aparecerán también en este desplegable.</p>
+        <div id="oport-body"></div></div>
+      <div class="panel" id="mae-esp" hidden><h2>Tus especialidades de Maestros</h2>
+        <p class="note" style="margin:0 0 .6rem">Elígelas para ver las adjudicaciones que te interesan.</p>
+        <div id="mae-list" class="filters"></div><button class="btn" id="mae-save">Guardar</button></div>
+      <div class="panel"><h2>Últimas adjudicaciones en tus bolsas</h2><div id="u-body"></div>
+        <p class="note">Orientativo, no garantiza ni descarta ninguna plaza. «Competidores por delante» son las personas que pidieron alguna de las plazas ofertadas y no la consiguieron («No adjudicat»). Vacante: trabajarás hasta el final del curso en el mismo centro. Sustitución: la plaza es temporal, mientras su titular está de baja.</p></div>
+      <div class="panel"><h2>Hasta dónde se llegó otros años</h2><div id="h-body"></div></div>
+    </div>
+  </main>
+
+  <main id="v-admin" class="view" hidden>
+    <div class="top"><div class="brand">Docents<b>CV</b></div><div><button class="link" data-go="apartado">← Mi apartado</button> · <button class="link" data-go="home">Inicio</button></div></div>
+    <h1>Administración</h1>
+    <div class="panel" id="admin">
+      <h2>Subir PDF de adjudicaciones</h2>
+      <div class="filters">
+        <label>Tipo <select id="ad-tipo"><option value="continua">Adjudicación continua</option><option value="inicio_curso">Inicio de curso (se carga a mano)</option></select></label>
+        <label>Cuerpo <select id="ad-cuerpo"><option value="maestros">Maestros</option><option value="otros">Secundaria y otros cuerpos</option></select></label>
+        <label>Archivo PDF <input id="ad-file" type="file" accept="application/pdf"></label>
+        <button class="btn" id="ad-up">Subir</button>
+      </div>
+      <p class="note" id="ad-msg" role="status" style="margin:0 0 .6rem"></p>
+      <div class="scroll"><table><thead><tr><th>Archivo</th><th>Tipo</th><th>Cuerpo</th><th>Estado</th><th>Fecha</th></tr></thead><tbody id="ad-rows"></tbody></table></div>
+      <p class="note">Nombre del archivo como lo publica la Conselleria (por ejemplo 261022_lis_mae.pdf o 261022_lis_sec.pdf). Cada 15 minutos se procesan los pendientes; recarga la lista para ver el resultado.</p>
+    </div>
+  </main>
+
+  <footer>DocentsCV es un proyecto independiente, no vinculado a la Conselleria. Fuente: listados oficiales de adjudicación de inicio de curso. No se muestran nombres de personas.</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+// ====== CONEXIÓN SUPABASE ======
+const SUPABASE_URL = "https://gwoamxgvnhietzhixjlf.supabase.co";
+const SUPABASE_KEY = "sb_publishable_H2de5fVQpyV-L9y_5K6DpA_ZQ_zQCUl";   // clave pública
+// ===============================
+const PAGE = 100, ZONA = 300, PREV = 15;
+const $ = id => document.getElementById(id);
+const enc = encodeURIComponent;
+const esc = s => String(s ?? "").replace(/[&<>"]/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
+let offset = 0, timer = null, CURSOS = [], ESPS = [], ESPU = [], CUERPOS = [], LIST = [];
+// La familia de una especialidad la da la primera cifra de su código: 1xx Maestros, 2xx Secundaria, 3xx FP especialistas, 4xx Escuelas de Idiomas, 5xx Catedráticos de Música, 6xx Música y Artes Escénicas, 7xx Artes Plásticas y Diseño, 8xx Maestros de Taller
+const FAM = { "1": "maestros", "2": "secundaria", "3": "fp_especialistas", "4": "idiomas", "5": "catedraticos_musica", "6": "musica", "7": "artes_plasticas", "8": "taller_artes" };
+const famDe = c => FAM[String(c || "")[0]] || "";
+const buildEspU = () => { const m = new Map(); ESPS.forEach(e => { if (!m.has(e.codigo) && famDe(e.codigo)) m.set(e.codigo, { codigo: e.codigo, nombre: e.nombre, cuerpo: famDe(e.codigo) }); }); ESPU = [...m.values()].sort((a, b) => a.codigo.localeCompare(b.codigo)); };
+let ADMIN = false, sb = null, RECOVERY = false, READY = false, AUTH_MODE = "login", USER = null;
+
+async function api(path, extra = {}) {
+  const r = await fetch(SUPABASE_URL + "/rest/v1/" + path, { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY, ...extra } });
+  if (!r.ok) throw new Error("Error " + r.status + " al consultar la base de datos");
+  return r;
+}
+const getJ = async p => (await api(p)).json();
+
+/* ---------- navegación ---------- */
+function show(v) {
+  document.querySelectorAll(".view").forEach(s => s.hidden = s.id !== "v-" + v);
+  window.scrollTo(0, 0);
+  if (v === "consulta") { consultaInit(); if (!$("rows").children.length) load(true); }
+  if (v === "apartado") renderApartado();
+  if (v === "admin") { if (!ADMIN) return show("home"); adminLista(); }
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (b) show(b.dataset.go); });
+
+/* ---------- arranque ---------- */
+async function init() {
+  if (SUPABASE_URL.startsWith("PEGA") || SUPABASE_KEY.startsWith("PEGA")) { $("cfgerr").hidden = false; return; }
+  try {
+    [CURSOS, ESPS, CUERPOS, LIST] = await Promise.all([getJ("cursos?select=*&order=id.desc"), getJ("especialidades?select=*&order=codigo&limit=1000"), getJ("cuerpos?select=*"), getJ("listados?select=*")]);
+    buildEspU(); $("cuerpo").innerHTML = cuerpoOptions("maestros"); fillConsulta();
+  } catch (e) { $("cfgerr").hidden = false; $("cfgerr").textContent = e.message + ". Revisa la conexión con la base de datos."; }
+}
+const cuerpoOptions = sel => CUERPOS.map(c => `<option value="${esc(c.slug)}"${c.slug === sel ? " selected" : ""}>${esc(c.nombre)}</option>`).join("");
+const espOptions = (cuerpo, sel) => ESPU.filter(e => e.cuerpo === cuerpo).map(e => `<option value="${esc(e.codigo)}"${e.codigo === sel ? " selected" : ""}>${esc(e.codigo)} · ${esc(e.nombre)}</option>`).join("");
+const okCursos = cuerpo => new Set(LIST.filter(l => l.cuerpo === cuerpo && l.usar_en_estimaciones).map(l => l.curso_id));
+function fillConsulta() {
+  const cu = $("cuerpo").value, flag = new Map(LIST.filter(l => l.cuerpo === cu).map(l => [l.curso_id, l.usar_en_estimaciones]));
+  $("curso").innerHTML = CURSOS.map(c => `<option value="${c.id}">${esc(c.curso)}${flag.get(c.id) === false ? " (datos por verificar)" : ""}</option>`).join("");
+  $("esp").innerHTML = espOptions(cu, cu === "maestros" ? "128" : "");
+}
+const t0 = Date.now();
+initAuth();
+init().finally(() => setTimeout(() => { consultaInit(); READY = true; if (RECOVERY) { show("auth"); authMode("nueva"); } else show("home"); $("splash").classList.add("out"); }, Math.max(0, 1300 - (Date.now() - t0))));
+
+/* ---------- estimación común ---------- */
+async function estimateHTML(cuerpo, esp, my) {
+  const rows = await getJ(`v_corte_especialidad?select=curso_id,curso,provincia,adjudicaciones,pos_max&cuerpo=eq.${enc(cuerpo)}&lista_codigo=eq.${enc(esp)}`);
+  const ok = okCursos(cuerpo), by = {};
+  rows.filter(r => ok.has(r.curso_id)).forEach(r => (by[r.curso] ||= []).push(r));
+  return Object.keys(by).sort().reverse().map(c => {
+    const tot = by[c].reduce((s, r) => s + r.adjudicaciones, 0), max = Math.max(...by[c].map(r => r.pos_max));
+    const prov = by[c].map(r => `${esc(r.provincia)}: hasta ${r.pos_max}`).join(" · ");
+    const rel = my ? (my <= max ? " Tu posición queda dentro de ese rango." : " Tu posición queda por encima de ese rango.") : "";
+    return `<li><strong>${esc(c)}</strong>: ${tot} adjudicaciones, la última en la posición ${max}. ${prov}.${rel}</li>`;
+  }).join("");
+}
+
+/* ---------- CONSULTA ---------- */
+async function load(reset) {
+  if (reset) { offset = 0; $("rows").innerHTML = ""; }
+  const prov = $("prov").value, q = $("q").value.trim().replace(/[*,()]/g, " "), my = parseInt($("mypos").value, 10) || 0;
+  let p = `adjudicaciones?select=posicion,tipo,horas,especialidad_codigo,centros!inner(nombre,localidad,provincia)&curso_id=eq.${$("curso").value}&cuerpo=eq.${enc($("cuerpo").value)}&lista_codigo=eq.${enc($("esp").value)}&order=posicion.asc&limit=${PAGE}&offset=${offset}`;
+  if (prov) p += `&centros.provincia=eq.${enc(prov)}`;
+  if (q) p += `&centros.or=(nombre.ilike.*${enc(q)}*,localidad.ilike.*${enc(q)}*)`;
+  try {
+    const r = await api(p, { Prefer: "count=exact" });
+    const total = parseInt((r.headers.get("Content-Range") || "").split("/")[1], 10);
+    const data = await r.json();
+    $("rows").insertAdjacentHTML("beforeend", data.map(a => {
+      const reach = my && a.posicion >= my;
+      return `<tr class="${reach ? "reach" : ""}"><td>${esc(a.centros.localidad)}</td><td>${esc(a.centros.nombre)}</td><td>${esc(a.especialidad_codigo)}</td><td>${a.tipo === "vacante" ? "Vacante" : "Sustitución"}</td><td class="n">${a.posicion}${reach ? ' <span class="tag">a tu alcance</span>' : ""}</td></tr>`;
+    }).join(""));
+    offset += data.length;
+    $("more").hidden = !(offset < total);
+    $("msg").textContent = total ? `Mostrando ${offset} de ${total} adjudicaciones.` : "Sin resultados. Prueba con otra provincia o borra el texto del filtro.";
+    if (reset) { try { $("est").innerHTML = await estimateHTML($("cuerpo").value, $("esp").value, my); $("estpanel").hidden = !$("est").innerHTML; } catch (e) { $("estpanel").hidden = true; } }
+  } catch (e) { $("msg").innerHTML = `<span class="err">${esc(e.message)}</span>`; }
+}
+["curso", "esp", "prov"].forEach(id => $(id).addEventListener("change", () => load(true)));
+$("cuerpo").addEventListener("change", () => { fillConsulta(); load(true); });
+["q", "mypos"].forEach(id => $(id).addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(() => load(true), 400); }));
+$("more").addEventListener("click", () => load(false));
+
+/* ---------- CONSULTA: últimas adjudicaciones y buscador ---------- */
+let INST = [], LISTAS = {}, CEN = {}, ULT = {}, ULT_SHOWN = 0;
+const UL_PAGE = 25;
+const espNom = (cuerpo, cod) => { const e = ESPU.find(x => x.codigo === cod); return e ? cod + " · " + e.nombre : (cod || ""); };
+async function cargarCentros(codes) {
+  const need = [...new Set(codes.filter(c => c && !CEN[c]))];
+  for (let i = 0; i < need.length; i += 150) {
+    const r = await getJ(`centros?select=codigo,nombre,localidad,provincia&codigo=in.(${need.slice(i, i + 150).map(enc).join(",")})&limit=1000`);
+    r.forEach(c => CEN[c.codigo] = c);
+  }
+}
+const ultimaInst = g => INST.filter(i => i.tipo === "continua" && i.grupo === g).sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
+async function ultRows(g) {
+  if (ULT[g]) return ULT[g];
+  const ins = ultimaInst(g); if (!ins) return (ULT[g] = { ins: null, rows: [] });
+  const rows = await getJ(`adjudicaciones_continuas?select=posicion,tipo,especialidad_codigo,centro_codigo,lista_id&instantanea_id=eq.${ins.id}&order=posicion.asc&limit=1000`);
+  await cargarCentros(rows.map(r => r.centro_codigo));
+  return (ULT[g] = { ins, rows });
+}
+async function consultaInit() {
+  if (consultaInit.hecho) return; consultaInit.hecho = true;
+  try {
+    const [ins, lis] = await Promise.all([getJ("instantaneas?select=id,fecha,tipo,grupo&order=fecha.desc&limit=500"), getJ("listas?select=*&limit=500")]);
+    INST = ins; lis.forEach(l => LISTAS[l.id] = l);
+    $("bs-cuerpo").innerHTML = cuerpoOptions("maestros"); bsEsp();
+    const [m, o] = await Promise.all([ultRows("maestros"), ultRows("otros")]);
+    const fechas = INST.filter(i => i.tipo === "continua").map(i => i.fecha), ult = fechas.sort().pop(), tandas = new Set(fechas).size + (ult ? 1 : 0) - (ult ? 1 : 0);
+    const tandasN = new Set(INST.filter(i => i.tipo === "continua").map(i => i.fecha)).size;
+    const enUlt = (x) => x.ins && x.ins.fecha === ult ? x.rows.length : 0;
+    $("hero").innerHTML = `<div class="k">Adjudicaciones continuas</div><div class="h">Última tanda: ${fmtF(ult)}</div>
+      <div class="g"><div><b>${enUlt(m) + enUlt(o)}</b><small>plazas adjudicadas en la última tanda</small></div><div><b>${m.rows.length}</b><small>Maestros (última lista, ${m.ins ? fmtF(m.ins.fecha) : "—"})</small></div><div><b>${o.rows.length}</b><small>Secundaria y otros (última lista, ${o.ins ? fmtF(o.ins.fecha) : "—"})</small></div><div><b>${tandasN}</b><small>fechas con adjudicaciones este curso</small></div></div>`;
+    $("home-stats").innerHTML = `<div><b>${enUlt(m) + enUlt(o)}</b><small>plazas adjudicadas en la última tanda</small></div><div><b>${fmtF(ult).slice(0, 5)}</b><small>última tanda (${fmtF(ult).slice(6)})</small></div><div><b>${tandasN}</b><small>fechas con adjudicaciones este curso</small></div>`;
+    ultimas();
+  } catch (e) { $("hero").innerHTML = `<div class="h">No se pudieron cargar las adjudicaciones</div><div>${esc(e.message)}</div>`; }
+}
+async function ultimas() {
+  const g = $("ul-grupo").value, { ins, rows } = await ultRows(g), q = $("ul-q").value.trim().toLowerCase();
+  const lista = rows.filter(r => { if (!q) return true; const c = CEN[r.centro_codigo] || {}; return ((c.nombre || "") + " " + (c.localidad || "")).toLowerCase().includes(q); });
+  window.__ulLista = lista; ULT_SHOWN = 0; $("ul-rows").innerHTML = "";
+  $("ul-fecha").innerHTML = ins ? `Lista del <strong>${fmtF(ins.fecha)}</strong>: ${rows.length} plaza${rows.length === 1 ? "" : "s"} adjudicada${rows.length === 1 ? "" : "s"}.` : "Todavía no hay adjudicaciones de esta lista.";
+  ultMas();
+}
+function ultMas() {
+  const lista = window.__ulLista || [], trozo = lista.slice(ULT_SHOWN, ULT_SHOWN + UL_PAGE);
+  $("ul-rows").insertAdjacentHTML("beforeend", trozo.map(r => {
+    const c = CEN[r.centro_codigo] || {}, l = LISTAS[r.lista_id] || {}, cu = l.cuerpo || "maestros";
+    return `<div class="it"><div class="a"><b>${esc(c.nombre || r.centro_codigo || "")}</b><small>${esc(c.localidad || "")} · ${esc(espNom(cu, r.especialidad_codigo))}${cu !== "maestros" ? " (" + esc(cuerpoNombre(cu)) + ")" : ""}</small></div><div class="z"><span class="pos-b">${r.posicion}</span><small>${r.tipo === "vacante" ? "Vacante" : "Sustitución"}</small></div></div>`;
+  }).join(""));
+  ULT_SHOWN += trozo.length;
+  $("ul-more").hidden = ULT_SHOWN >= lista.length;
+  $("ul-msg").textContent = lista.length ? `Mostrando ${ULT_SHOWN} de ${lista.length}.` : "Sin resultados.";
+}
+function bsEsp() { const cu = $("bs-cuerpo").value; $("bs-esp").innerHTML = '<option value="">Todas las especialidades</option>' + espOptions(cu, ""); }
+async function bsBuscar() {
+  const cu = $("bs-cuerpo").value, esp = $("bs-esp").value, q = $("bs-q").value.trim().replace(/[*,()]/g, " ").trim(), out = $("bs-body");
+  if (!esp && q.length < 3) { out.innerHTML = '<p class="note">Elige una especialidad o escribe al menos 3 letras de un centro o localidad.</p>'; return; }
+  out.innerHTML = '<p class="note">Buscando…</p>';
+  try {
+    const ids = Object.values(LISTAS).filter(l => l.cuerpo === cu).map(l => l.id);
+    if (!ids.length) { out.innerHTML = '<p class="note">Todavía no hay adjudicaciones continuas de este cuerpo.</p>'; return; }
+    let filtroC = "";
+    if (q) {
+      const cs = await getJ(`centros?select=codigo,nombre,localidad,provincia&or=(nombre.ilike.*${enc(q)}*,localidad.ilike.*${enc(q)}*)&limit=300`);
+      if (!cs.length) { out.innerHTML = '<p class="note">No encontramos ningún centro o localidad con ese texto.</p>'; return; }
+      cs.forEach(c => CEN[c.codigo] = c); filtroC = `&centro_codigo=in.(${cs.map(c => enc(c.codigo)).join(",")})`;
+    }
+    const rows = await getJ(`adjudicaciones_continuas?select=instantanea_id,posicion,tipo,centro_codigo,especialidad_codigo&lista_id=in.(${ids.join(",")})${esp ? `&especialidad_codigo=eq.${enc(esp)}` : ""}${filtroC}&order=instantanea_id.desc&limit=1000`);
+    if (!rows.length) { out.innerHTML = '<p class="note">No ha habido adjudicaciones con esos filtros en lo que va de curso.</p>'; return; }
+    const fch = new Map(INST.map(i => [i.id, i.fecha]));
+    rows.forEach(r => r.f = fch.get(r.instantanea_id) || "");
+    rows.sort((a, b) => b.f.localeCompare(a.f) || b.posicion - a.posicion);
+    await cargarCentros(rows.map(r => r.centro_codigo));
+    const por = new Map();
+    rows.forEach(r => { let x = por.get(r.centro_codigo); if (!x) por.set(r.centro_codigo, x = { f: r.f, pos: [], tipos: new Set(), n: 0 }); x.n++; if (r.f === x.f) { x.pos.push(r.posicion); x.tipos.add(r.tipo); } });
+    const lista = [...por].sort((a, b) => b[1].f.localeCompare(a[1].f));
+    const tope = rows.reduce((m, r) => r.f > m.f || (r.f === m.f && r.posicion > m.p) ? { f: r.f, p: r.posicion } : m, { f: "", p: 0 });
+    const maxTot = Math.max(...rows.map(r => r.posicion));
+    out.innerHTML = `<div class="op-b" style="--c:var(--blu);--cb:var(--blu-bg)"><div class="k">📌 ${esp ? esc(espNom(cu, esp)) : "Resultado de tu búsqueda"}</div><div class="h">Última adjudicación: ${fmtF(rows[0].f)}</div><span class="n">${Math.max(...rows.filter(r => r.f === rows[0].f).map(r => r.posicion))}</span> posición más alta ese día · se ha llegado hasta la <strong>${maxTot}</strong> en lo que va de curso.</div>
+      <div>${lista.slice(0, 60).map(([k, x]) => { const c = CEN[k] || {}; return `<div class="it"><div class="a"><b>${esc(c.nombre || k)}</b><small>${esc(c.localidad || "")} · última: ${fmtF(x.f)} · ${[...x.tipos].map(t => t === "vacante" ? "Vacante" : "Sustitución").join(" / ")} · ${x.n} ${x.n === 1 ? "adjudicación" : "adjudicaciones"} este curso</small></div><div class="z"><span class="pos-b">${Math.max(...x.pos)}</span><small>${x.pos.length > 1 ? "más alta (" + x.pos.length + " plazas)" : "posición"}</small></div></div>`; }).join("")}</div>
+      <p class="note">${lista.length} centro${lista.length === 1 ? "" : "s"}${lista.length > 60 ? " (mostrando los 60 más recientes)" : ""}. Orientativo: la posición cambia en cada lista.</p>`;
+  } catch (e) { out.innerHTML = `<p class="err">${esc(e.message)}</p>`; }
+}
+$("ul-grupo").addEventListener("change", ultimas);
+$("ul-q").addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(ultimas, 300); });
+$("ul-more").addEventListener("click", ultMas);
+$("bs-cuerpo").addEventListener("change", () => { bsEsp(); bsBuscar(); });
+$("bs-esp").addEventListener("change", bsBuscar);
+$("bs-q").addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(bsBuscar, 450); });
+
+/* ---------- CUENTAS (Supabase Auth) ---------- */
+function initAuth() {
+  if (!window.supabase) return;
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  sb.auth.onAuthStateChange(ev => { if (ev === "PASSWORD_RECOVERY") { RECOVERY = true; if (READY) { show("auth"); authMode("nueva"); } } });
+}
+const AU = { login: ["Entrar", "Entrar", "Crear cuenta", "registro"], registro: ["Crear cuenta", "Crear cuenta", "Ya tengo cuenta", "login"], olvido: ["Recuperar contraseña", "Enviar enlace", "Volver", "login"], nueva: ["Nueva contraseña", "Guardar contraseña", "", "login"] };
+function authMode(m) {
+  AUTH_MODE = m; const a = AU[m];
+  $("au-title").textContent = a[0]; $("au-go").textContent = a[1];
+  $("au-alt").textContent = a[2]; $("au-alt").hidden = !a[2]; $("au-alt").dataset.m = a[3];
+  $("au-l-mail").hidden = m === "nueva"; $("au-l-pass").hidden = m === "olvido";
+  $("au-forgot").hidden = m !== "login"; $("au-msg").textContent = "";
+  $("au-pass").autocomplete = m === "login" ? "current-password" : "new-password";
+}
+const errEs = e => /invalid login/i.test(e.message) ? "Correo o contraseña incorrectos." : /not confirmed/i.test(e.message) ? "Aún no has confirmado tu correo. Revisa tu bandeja de entrada." : /rate limit|too many/i.test(e.message) ? "Demasiados intentos. Espera unos minutos." : e.message;
+$("au-alt").onclick = () => authMode($("au-alt").dataset.m);
+$("au-forgot").onclick = () => authMode("olvido");
+$("au-go").onclick = async () => {
+  const mail = $("au-mail").value.trim(), pass = $("au-pass").value, msg = s => { $("au-msg").textContent = s; };
+  if (!sb) return msg("No se pudo cargar el sistema de cuentas. Revisa tu conexión y recarga la página.");
+  const back = location.origin + location.pathname;
+  if (AUTH_MODE !== "nueva" && !/^\S+@\S+\.\S+$/.test(mail)) return msg("Escribe un correo válido.");
+  if (AUTH_MODE !== "olvido" && pass.length < 8) return msg("La contraseña debe tener al menos 8 caracteres.");
+  msg("Un momento…");
+  try {
+    if (AUTH_MODE === "login") { const { error } = await sb.auth.signInWithPassword({ email: mail, password: pass }); if (error) throw error; show("apartado"); }
+    else if (AUTH_MODE === "registro") { const { data, error } = await sb.auth.signUp({ email: mail, password: pass, options: { emailRedirectTo: back } }); if (error) throw error; if (data.session) show("apartado"); else msg("Te hemos enviado un correo. Pulsa el enlace para confirmar tu cuenta y después entra."); }
+    else if (AUTH_MODE === "olvido") { const { error } = await sb.auth.resetPasswordForEmail(mail, { redirectTo: back }); if (error) throw error; msg("Si el correo existe, recibirás un enlace para crear una nueva contraseña."); }
+    else { const { error } = await sb.auth.updateUser({ password: pass }); if (error) throw error; RECOVERY = false; show("apartado"); }
+  } catch (e) { msg("No se pudo completar: " + errEs(e)); }
+};
+$("logout").onclick = async () => { if (sb) await sb.auth.signOut(); USER = null; show("home"); };
+
+/* ---------- MI APARTADO ---------- */
+// ---- Acceso: prueba gratuita y pago (el cierre real lo hace la base de datos)
+let SIM = null;   // solo administradores: simula "prueba" o "fin" para ver cómo queda
+async function accesoInfo() {
+  if (ADMIN && SIM === "fin") return { cobro_activo: true, activo: false, precio: "9.99", fin_curso: "2027-06-30" };
+  if (ADMIN && SIM === "prueba") return { cobro_activo: true, activo: true, en_prueba: true, dias_restantes: 5, precio: "9.99", fin_curso: "2027-06-30" };
+  try { const { data, error } = await sb.rpc("mi_acceso"); if (!error && data) return data; } catch (e) {}
+  return { cobro_activo: false, activo: true };
+}
+function pintarAcceso(ac) {
+  const box = $("acc-box"), pr = String(ac.precio || "9.99").replace(".", ","), fin = ac.fin_curso ? fmtF(ac.fin_curso) : "";
+  if (!ac.cobro_activo || (ac.activo && !ac.en_prueba)) { box.innerHTML = ""; return; }
+  if (ac.activo) {
+    const n = ac.dias_restantes;
+    box.innerHTML = `<div class="sc" style="--c:var(--amb);--cb:var(--amb-bg);margin-top:1rem"><div class="sc-st"><i>🎁</i><div>Prueba gratuita: te ${n === 1 ? "queda 1 día" : "quedan " + n + " días"}<small>Después, ${pr} € por todo el curso${fin ? " (hasta el " + fin + ")" : ""}. Pago único, sin renovación automática.</small></div></div></div>`;
+    return;
+  }
+  box.innerHTML = `<div class="sc" style="--c:var(--blu);--cb:var(--blu-bg);margin-top:1rem"><div class="sc-h"><b>Tu prueba gratuita ha terminado</b><span>Sigue viendo tu situación en las bolsas</span></div>
+    <div class="sc-b"><ul class="l" style="margin:.4rem 0"><li>Tu puesto y cómo evoluciona en cada bolsa</li><li>Probabilidad de conseguir plaza</li><li>Oportunidades por centro y últimas adjudicaciones</li><li>Hasta dónde se llegó otros años</li></ul>
+    <div class="sc-p" style="--pc:var(--blu);--pb:var(--blu-bg)"><div class="t">Todo el curso</div><div class="v">${pr} €</div><div class="d">Pago único${fin ? ", con acceso hasta el " + fin : ""}. Sin renovación automática.</div></div>
+    <p style="margin:1rem 0 .3rem"><button class="btn" id="pagar" style="font-size:1.1rem;padding:.7rem 1.4rem">Pagar ${pr} €</button></p>
+    <p class="note" id="pagar-msg" role="status"></p></div></div>`;
+  $("pagar").onclick = () => { $("pagar-msg").textContent = "El pago estará disponible muy pronto en la app de Android."; };
+}
+
+async function renderApartado() {
+  if (!sb) { show("auth"); authMode("login"); $("au-msg").textContent = "No se pudo cargar el sistema de cuentas. Recarga la página."; return; }
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { show("auth"); authMode("login"); return; }
+  USER = session.user; $("who").textContent = USER.email;
+  await adminInit();
+  let idn = null;
+  try { idn = (await sb.rpc("mi_nombre")).data; } catch (e) {}
+  if (!idn) {
+    $("analisis").hidden = true; $("acc-box").innerHTML = "";
+    $("perfil").innerHTML = `<h2>Identifícate</h2><p style="margin:0 0 .75rem">Escribe tu nombre exactamente como sale en las listas oficiales: apellidos, una coma y el nombre. <strong>No se podrá cambiar después.</strong></p>
+      <div class="filters"><label>Tu nombre <input id="n-nom" type="text" autocomplete="off" placeholder="APELLIDO1 APELLIDO2, NOMBRE" style="min-width:min(22rem,80vw)"></label><button class="btn" id="n-ok">Confirmar</button></div><p class="note" id="n-msg" role="status"></p>`;
+    $("n-ok").onclick = async () => {
+      const nom = $("n-nom").value.trim(), msg = s => { $("n-msg").textContent = s; };
+      if (nom.length < 6) return msg("Escribe tu nombre completo: apellidos, una coma y el nombre.");
+      if (!confirm("Vas a registrar «" + nom + "». No se podrá cambiar después. ¿Es correcto?")) return;
+      msg("Buscando en las listas…");
+      const { data, error } = await sb.rpc("reclamar_nombre", { p_nombre: nom });
+      if (error) return msg("No se pudo comprobar: " + error.message);
+      if (data === "ok" || data === "ya_tiene") return pedirEsp();
+      msg(data === "ambiguo" ? "Hay más de una persona con ese nombre y todavía no podemos distinguirte. Escríbenos y lo resolvemos." : data === "no_encontrado" ? "No encontramos ese nombre en las listas. Escríbelo como aparece en el PDF: apellidos, coma y nombre." : "Vuelve a entrar con tu cuenta.");
+    };
+    return;
+  }
+  if (!window.__espAsked) { window.__espAsked = true; let ya = null; try { ya = (await sb.from("perfiles").select("esp_maestros").eq("id", USER.id).maybeSingle()).data; } catch (e) {} if (!ya || !ya.esp_maestros || !ya.esp_maestros.length) return pedirEsp(); }
+  let espMia = [];
+  try { espMia = ((await sb.from("perfiles").select("esp_maestros").eq("id", USER.id).maybeSingle()).data || {}).esp_maestros || []; } catch (e) {}
+  const espTxt = espMia.map(c => { const e = ESPU.find(x => x.codigo === c); return `<span class="tag" style="margin:.15rem .25rem 0 0">${esc(c)} · ${esc(e ? e.nombre : "")}</span>`; }).join("");
+  $("perfil").innerHTML = `<div class="note" style="margin:0">Tu nombre en las listas</div><div class="big" style="font-size:1.6rem">${esc(idn)}</div>${espTxt ? `<div class="note" style="margin:.5rem 0 0">Tus especialidades de Maestros</div><div>${espTxt}</div>` : ""}<p class="note">Si hay un error en tu nombre o especialidades, escríbenos para corregirlo.</p>`
+    + (ADMIN ? `<button class="btn" id="adesp" style="margin-top:.4rem">Administrador: cambiar mis especialidades</button>` : "")
+    + (ADMIN ? `<details style="margin-top:.6rem"><summary class="note" style="cursor:pointer">Administrador: ver la web como otra persona</summary>
+      <div class="filters" style="margin-top:.5rem"><label>Nombre en las listas <input id="adn-nom" type="text" autocomplete="off" placeholder="APELLIDO1 APELLIDO2, NOMBRE" style="min-width:min(22rem,80vw)"></label><button class="btn" id="adn-ok">Cambiar</button></div>
+      <p class="note" style="margin:.6rem 0 .2rem">Ver cómo lo ve un usuario con el cobro activado:</p><div class="filters"><button class="btn" id="sim-p">Prueba (5 días)</button><button class="btn" id="sim-f">Prueba terminada</button><button class="btn" id="sim-n">Quitar simulación</button></div><p class="note" id="adn-msg" role="status"></p></details>` : "");
+  if (ADMIN && $("adesp")) $("adesp").onclick = () => pedirEsp(true);
+  if (ADMIN) { $("sim-p").onclick = () => { SIM = "prueba"; renderApartado(); }; $("sim-f").onclick = () => { SIM = "fin"; renderApartado(); }; $("sim-n").onclick = () => { SIM = null; renderApartado(); }; }
+  if (ADMIN) $("adn-ok").onclick = async () => {
+    const nom = $("adn-nom").value.trim(); if (nom.length < 6) { $("adn-msg").textContent = "Escribe apellidos, coma y nombre."; return; }
+    const { data, error } = await sb.rpc("admin_cambiar_nombre", { p_nombre: nom });
+    if (error) { $("adn-msg").textContent = "No se pudo cambiar: " + error.message; return; }
+    if (data === "ok") return renderApartado();
+    $("adn-msg").textContent = data === "no_encontrado" ? "No encontramos ese nombre en las listas." : "No tienes permiso.";
+  };
+  const ac = await accesoInfo(); pintarAcceso(ac);
+  if (!ac.activo) { $("analisis").hidden = true; return; }
+  $("analisis").hidden = false;
+  situacion();
+}
+
+/* ---------- ADMINISTRACIÓN: subir PDF ---------- */
+async function adminInit() {
+  ADMIN = false; $("ad-go").hidden = true;
+  try {
+    const { data, error } = await sb.from("admins").select("user_id").eq("user_id", USER.id).maybeSingle();
+    if (error) { console.warn("DocentsCV admin:", error.message); return; }
+    if (!data) { console.info("DocentsCV: esta cuenta no está en la tabla admins"); return; }
+  } catch (e) { return; }
+  ADMIN = true; $("ad-go").hidden = false;
+}
+$("ad-go").onclick = () => show("admin");
+async function adminLista() {
+  const { data, error } = await sb.from("importaciones").select("nombre_original,tipo,cuerpo,estado,mensaje,creado").order("creado", { ascending: false }).limit(15);
+  $("ad-rows").innerHTML = error ? `<tr><td colspan="5" class="err">${esc(error.message)}</td></tr>`
+    : data.map(i => `<tr><td>${esc(i.nombre_original)}</td><td>${esc(i.tipo)}</td><td>${esc(i.cuerpo)}</td><td>${esc(i.estado)}${i.mensaje ? " · " + esc(i.mensaje) : ""}</td><td>${esc(new Date(i.creado).toLocaleString("es-ES"))}</td></tr>`).join("");
+}
+$("ad-up").onclick = async () => {
+  const f = $("ad-file").files[0], msg = s => { $("ad-msg").textContent = s; };
+  if (!f) return msg("Elige un archivo PDF.");
+  if (!/\.pdf$/i.test(f.name)) return msg("El archivo debe ser un PDF.");
+  msg("Subiendo… puede tardar si el archivo es grande.");
+  const path = "pendientes/" + Date.now() + "_" + f.name.replace(/[^\w.\-]/g, "_");
+  try {
+    const up = await sb.storage.from("pdfs").upload(path, f, { contentType: "application/pdf" }); if (up.error) throw up.error;
+    const ins = await sb.from("importaciones").insert({ archivo: path, nombre_original: f.name, tipo: $("ad-tipo").value, cuerpo: $("ad-cuerpo").value, creado_por: USER.id }); if (ins.error) throw ins.error;
+    msg("PDF subido. Se procesará automáticamente en unos 15 minutos; recarga esta lista para ver el resultado."); $("ad-file").value = ""; adminLista();
+  } catch (e) { msg("No se pudo subir: " + e.message); }
+};
+
+const EST_TXT = {
+  1: "Adjudicado: tienes plaza",
+  2: "No adjudicado: pediste alguna plaza ofertada y no la conseguiste",
+  3: "Has participado: ninguna de tus peticiones estaba entre las plazas ofertadas",
+  4: "No has participado: no confirmaste a tiempo",
+  5: "Desactivado"
+};
+const fmtF = f => f ? String(f).split("-").reverse().join("/") : "";
+const pct = p => p < 0.01 ? "menos del 1 %" : Math.round(p * 100) + " %";
+const acum = (p, n) => 1 - Math.pow(1 - p, n);
+const nivel = p3 => p3 < 0.05 ? "Muy baja" : p3 < 0.15 ? "Baja" : p3 < 0.30 ? "Media" : p3 < 0.50 ? "Alta" : "Muy alta";
+const cuerpoNombre = slug => (CUERPOS.find(c => c.slug === slug) || {}).nombre || slug;
+const tituloLista = r => r.cuerpo === "maestros" ? "Maestros · lista única" : r.bolsa + " · " + r.bolsa_nombre;
+
+// Gráfico de evolución: la línea sube cuando mejora tu puesto (número más bajo)
+function chart(h, key, lab) {
+  const pts = h.slice().reverse().filter(r => r[key] != null).map(r => ({ t: Date.parse(r.fecha), y: r[key], f: r.fecha, e: r.estado }));
+  if (pts.length < 2) return "";
+  const W = 340, H = 120, pl = 38, pr = 10, pt = 12, pb = 24;
+  const t0 = pts[0].t, t1 = pts[pts.length - 1].t, ys = pts.map(p => p.y), lo = Math.min(...ys), hi = Math.max(...ys);
+  const X = t => pl + (t - t0) / ((t1 - t0) || 1) * (W - pl - pr), Y = v => pt + (v - lo) / ((hi - lo) || 1) * (H - pt - pb);
+  const line = pts.map((p, i) => (i ? "L" : "M") + X(p.t).toFixed(1) + " " + Y(p.y).toFixed(1)).join(" ");
+  const dots = pts.map(p => {
+    const cx = X(p.t), cy = Y(p.y), txt = `${fmtF(p.f)} · ${lab}: ${p.y}`, bw = txt.length * 5.6 + 14, bx = Math.min(Math.max(cx - bw / 2, 2), W - bw - 2), by = cy < 40 ? cy + 12 : cy - 34;
+    return `<g class="pt" tabindex="0"><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="9" fill="transparent"/><circle class="d" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="3.4" fill="${p.e === 1 ? "var(--mark)" : "var(--accent)"}"/><g class="tip" pointer-events="none"><rect x="${bx.toFixed(1)}" y="${by.toFixed(1)}" width="${bw.toFixed(1)}" height="22" rx="5" fill="var(--ink)"/><text x="${(bx + bw / 2).toFixed(1)}" y="${(by + 15).toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="600" fill="var(--paper)">${txt}</text></g></g>`;
+  }).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolución: de ${pts[0].y} el ${fmtF(pts[0].f)} a ${pts[pts.length - 1].y} el ${fmtF(pts[pts.length - 1].f)}" style="width:100%;max-width:34rem;height:auto;display:block;margin:.5rem 0">
+    <line x1="${pl}" y1="${H - pb}" x2="${W - pr}" y2="${H - pb}" stroke="var(--line)"/><line x1="${pl}" y1="${pt}" x2="${pl}" y2="${H - pb}" stroke="var(--line)"/>
+    <path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>${dots}
+    <g font-size="10" fill="var(--muted)"><text x="${pl - 4}" y="${pt + 3}" text-anchor="end">${lo}</text><text x="${pl - 4}" y="${H - pb}" text-anchor="end">${hi}</text>
+    <text x="${pl}" y="${H - 8}">${fmtF(pts[0].f)}</text><text x="${W - pr}" y="${H - 8}" text-anchor="end">${fmtF(pts[pts.length - 1].f)}</text></g></svg>`;
+}
+
+function charts(h) {
+  const ult = h.length ? h.reduce((m, r) => r.fecha > m ? r.fecha : m, "") : "";
+  let h2 = h;
+  if (ult) { const d = new Date(ult); d.setMonth(d.getMonth() - 2); const lim = d.toISOString().slice(0, 10); h2 = h.filter(r => r.fecha >= lim); }
+  const a = chart(h2, "posicion", "Tu puesto"), b = chart(h2, "x", "Competidores por delante");
+  const ttl = '<div class="note" style="margin:.9rem 0 0"><strong>Evolución de los últimos 2 meses</strong></div>';
+  if (!a && !b) return ttl + '<p class="note" style="margin:.2rem 0 0">Todavía no hay suficientes datos en los últimos 2 meses para dibujar la gráfica.</p>';
+  return ttl + (a ? `<div class="note" style="margin:.4rem 0 0"><strong>Tu puesto en la lista</strong> (más arriba = mejor)</div>${a}` : "")
+       + (b ? `<div class="note" style="margin:.4rem 0 0"><strong>Competidores por delante</strong> (más arriba = menos competidores)</div>${b}` : "");
+}
+const fmtH = h => h == null ? "Completa" : String(+h).replace(".", ",");
+function tarjeta(r, hist, alc) {
+  const ini = hist.find(x => x.tipo === "inicio_curso"), d = r.delante || {}, mae = r.cuerpo === "maestros";
+  const TEMA = { 1: ["ok", "ok", "🎉", "¡Tienes plaza!"], 2: ["amb", "amb", "⏳", "Sigues compitiendo"], 3: ["blu", "blu", "📋", "Sigues en la lista"], 4: ["red", "red", "⚠️", "No confirmaste a tiempo"], 5: ["gry", "gry", "⏸️", "Desactivado en esta bolsa"] };
+  const [cv, , ico, titulo] = TEMA[r.estado] || TEMA[3];
+  const vars = `--c:var(--${cv});--cb:var(--${cv}-bg)`;
+  const cab = `<div class="sc-h"><b>${esc(tituloLista(r))}</b><span>${esc(cuerpoNombre(r.cuerpo))} · lista del ${fmtF(r.fecha)}</span></div>`;
+  const st = (sub) => `<div class="sc-st"><i>${ico}</i><div>${titulo}<small>${esc(sub)}</small></div></div>`;
+  if (r.estado === 1) {
+    const a = hist[0] || {};
+    return `<div class="sc" style="${vars}">${cab}${st(EST_TXT[1])}<div class="sc-b"><p style="margin:.2rem 0;font-size:1.05rem">${a.centro ? `<strong>${esc(a.centro)}</strong> (${esc(a.localidad || "")})` : "Plaza adjudicada"}${a.plaza_tipo ? " · " + (a.plaza_tipo === "vacante" ? "Vacante" : "Sustitución") : ""}</p>${charts(hist)}</div></div>`;
+  }
+  if (r.estado === 5) return `<div class="sc" style="${vars}">${cab}${st("Estás desactivado en esta bolsa")}<div class="sc-b">${charts(hist)}</div></div>`;
+  const cambio = ini && ini.posicion !== r.posicion ? ini.posicion - r.posicion : null;
+  const otras = [[d["1"], "ya adjudicados"], [d["3"], "no pidieron estas plazas"], [d["4"], "no confirmaron a tiempo"]].filter(x => x[0]).map(x => `${x[0]} ${x[1]}`).join(" · ");
+  const ausente = r.fecha < r.ult_tanda ? `<p class="note">Tu bolsa no aparece en las listas posteriores al ${fmtF(r.fecha)}: no hubo plazas ofertadas en ella (o ya tienes plaza en otra bolsa).</p>` : "";
+  const k = `<div class="sc-k">
+    <div><small>Tu puesto</small><b>${r.posicion}</b>${r.sub ? `<span class="note" style="margin:0">${r.sub} entre quienes participan</span>` : ""}</div>
+    ${ini ? `<div><small>Inicio de curso</small><b>${ini.posicion}</b>${cambio !== null ? `<em class="${cambio > 0 ? "" : "dn"}">${cambio > 0 ? "↑ subes " + cambio : "↓ bajas " + (-cambio)} puestos</em>` : ""}</div>` : ""}
+    <div><small>Competidores por delante</small><b>${r.x}</b></div></div>`;
+  let prob = "";
+  if (!mae && r.p_tanda !== null && r.p_tanda !== undefined) {
+    const p1 = Number(r.p_tanda), p3 = acum(p1, 3), nv = nivel(p3);
+    const pc = p3 < 0.15 ? "red" : p3 < 0.30 ? "amb" : "ok";
+    prob = `<div class="sc-p" style="--pc:var(--${pc});--pb:var(--${pc}-bg)"><div class="t">Probabilidad de conseguir plaza</div><div class="v">${nv} · ${pct(p3)}</div><div class="bar"><i style="width:${Math.max(3, Math.round(p3 * 100))}%"></i></div><div class="d">En las <strong>3 próximas tandas</strong> (${pct(p1)} en la próxima).</div></div>`;
+  }
+  const act = mae
+    ? `La lista de Maestros ha adjudicado ${r.adj_total} plazas en ${r.tandas} tandas (todas las especialidades).`
+    : `Tu bolsa ha ofrecido ${r.adj_total} plaza${r.adj_total === 1 ? "" : "s"} en ${r.tandas_con_adj} de ${r.tandas} tandas (media de ${(r.adj_total / (r.tandas || 1)).toFixed(1)} por tanda; ${r.act} en las 3 últimas).`;
+  let al = "";
+  if (mae) {
+    al = alc && alc.length ? `<div class="sc-p" style="--pc:var(--blu);--pb:var(--blu-bg)"><div class="t">Hasta dónde se llega en tus especialidades</div><ul class="l" style="margin:.4rem 0 0">${alc.map(a => {
+      const rt = a.tandas ? a.tandas_alcanzado / a.tandas : 0, lv = rt >= 5 / 6 ? "Alcance alto" : rt >= 0.5 ? "Alcance medio" : rt > 0 ? "Alcance bajo" : "Alcance muy bajo";
+      return `<li><span class="tag">${lv}</span> <strong>${esc(a.especialidad_codigo)} · ${esc(a.especialidad)}</strong>: ${a.adj_total} adjudicaciones en las últimas ${a.tandas} tandas. La última llegó hasta alguien con ${a.x_max_ultima ?? "—"} competidores por delante (tú tienes ${a.x_mio}); en ${a.tandas_alcanzado} de ${a.tandas} tandas se llegó tan lejos como tú.</li>`;
+    }).join("")}</ul></div>` : '<p class="note" style="padding:0 1rem">Elige abajo tus especialidades de Maestros para ver hasta dónde se llega en cada una.</p>';
+  }
+  return `<div class="sc" style="${vars}">${cab}${st(EST_TXT[r.estado] || "")}${k}${prob}${al}<div class="sc-b">${otras ? `<p class="note">Por delante de ti: ${r.x} compiten (pidieron plazas ofertadas y no las consiguieron) · ${otras}.</p>` : ""}${ausente}<p class="note">${esc(act)}</p>${charts(hist)}</div></div>`;
+}
+
+async function oportunidades(pan) {
+  const { data, error } = await sb.rpc("mi_oportunidades");
+  if (error) { $("oport-body").innerHTML = `<p class="err">${esc(error.message)}</p>`; return; }
+  const por = {}; (data || []).forEach(o => (por[o.lista_id] ||= []).push(o));
+  let html = "";
+  pan.forEach(r => {
+    const rows = por[r.lista_id] || [];
+    html += `<div style="margin:0 0 1.4rem"><h3 style="margin:0 0 .3rem;font:600 1rem var(--body)">${esc(tituloLista(r))}</h3>`;
+    if (!rows.length) { html += `<p class="note">${r.cuerpo === "maestros" ? "Elige abajo tus especialidades de Maestros para ver oportunidades." : "Todavía no ha habido adjudicaciones en esta bolsa."}</p></div>`; return; }
+    const conDato = rows.filter(o => o.mi_posicion != null), K = conDato.filter(o => o.mi_posicion < o.posicion_adj).length, tandas = new Set(rows.map(o => o.fecha)).size;
+    html += `<p style="margin:.2rem 0 .6rem">En las últimas ${tandas} tanda${tandas === 1 ? "" : "s"} se adjudicaron <strong>${rows.length}</strong> plaza${rows.length === 1 ? "" : "s"} en esta bolsa${r.cuerpo === "maestros" ? " (de tus especialidades)" : ""}. ` +
+      (conDato.length ? `En las ${conDato.length} de ellas en las que apareces en la lista, tú ibas por delante de la persona adjudicada en <strong>${K}</strong> (${Math.round(100 * K / conDato.length)} %).` : "No apareces en esas listas (puede que ya tengas plaza), así que no hay comparación posible.") + `</p>`;
+    const ultima = rows[0].fecha, cen = new Map();
+    rows.forEach(o => { if (!cen.has(o.centro_codigo)) cen.set(o.centro_codigo, { n: o.centro || o.centro_codigo, l: o.localidad || "", u: o.fecha === ultima }); });
+    const opt = u => [...cen].filter(([, c]) => c.u === u).sort((a, b) => (a[1].l + a[1].n).localeCompare(b[1].l + b[1].n)).map(([k, c]) => `<option value="${esc(k)}">${esc(c.l)} · ${esc(c.n)}</option>`).join("");
+    html += `<label>Centro<select data-lista="${r.lista_id}" style="max-width:100%"><option value="">Elige un centro…</option><optgroup label="Última tanda con plazas (${fmtF(ultima)})">${opt(true)}</optgroup><optgroup label="Tandas anteriores">${opt(false)}</optgroup></select></label><div id="op-res-${r.lista_id}" style="margin-top:.6rem"></div></div>`;
+  });
+  $("oport-body").innerHTML = html;
+  $("oport-body").querySelectorAll("select").forEach(sel => sel.onchange = () => {
+    const out = $("op-res-" + sel.dataset.lista), rows = (por[sel.dataset.lista] || []).filter(o => o.centro_codigo === sel.value);
+    const esMae = (pan.find(x => String(x.lista_id) === sel.dataset.lista) || {}).cuerpo === "maestros";
+    if (!sel.value) { out.innerHTML = ""; return; }
+    const K = rows.filter(o => o.mi_posicion != null && o.mi_posicion < o.posicion_adj).length;
+    const dato = rows.filter(o => o.mi_posicion != null), N = dato.length, ult = dato[0];
+    let cartel = "";
+    if (N && K > 0) cartel = `<div class="op-b go" style="--c:var(--ok);--cb:var(--ok-bg)" role="status"><div class="k">🎯 Tu oportunidad en este centro</div><div class="h">¡Tenías opción real de conseguir esta plaza!</div><span class="n">${K} de ${N}</span> adjudicaciones en las que ibas <strong>por delante</strong> de la persona que se la llevó.<p>Si este centro vuelve a ofertar una plaza parecida, <strong>podría ser para ti</strong>. Estate atento a la próxima tanda.</p></div>`;
+    else if (N) {
+      const gap = ult.mi_posicion - ult.posicion_adj, cerca = gap / ult.mi_posicion < 0.15;
+      cartel = cerca
+        ? `<div class="op-b go" style="--c:var(--amb);--cb:var(--amb-bg)" role="status"><div class="k">🔥 Tu oportunidad en este centro</div><div class="h">¡Estás muy cerca!</div><span class="n">${gap}</span> puestos te separaron de la última persona adjudicada aquí (${fmtF(ult.fecha)}).<p>Con unas pocas tandas más, <strong>podrías alcanzarla</strong>.</p></div>`
+        : `<div class="op-b" style="--c:var(--blu);--cb:var(--blu-bg)" role="status"><div class="k">📍 Tu oportunidad en este centro</div><div class="h">Todavía lejos por ahora</div><span class="n">${gap}</span> puestos te separaron de la última persona adjudicada aquí (${fmtF(ult.fecha)}).<p>Las listas avanzan en cada tanda: vuelve a mirar tras las próximas adjudicaciones.</p></div>`;
+    }
+    out.innerHTML = cartel + `<p class="note" style="margin:0 0 .4rem">Este centro ha adjudicado ${rows.length} plaza${rows.length === 1 ? "" : "s"} en esta bolsa en las últimas tandas; en ${K} tú ibas por delante.</p>
+      <div class="scroll"><table><thead><tr><th>Fecha</th><th>Plaza</th><th class="n">Puesto del adjudicado</th><th class="n">Tu puesto ese día</th><th>Resultado</th></tr></thead><tbody>${rows.map(o => {
+        const res = o.mi_posicion == null ? "Sin dato" : o.mi_posicion < o.posicion_adj ? `<span class="tag">Ibas por delante</span> (${o.posicion_adj - o.mi_posicion} puestos)` : o.mi_posicion === o.posicion_adj ? "Eras tú" : `Iba por delante de ti (${o.mi_posicion - o.posicion_adj} puestos)`;
+        return `<tr><td>${fmtF(o.fecha)}</td><td>${o.plaza_tipo === "vacante" ? "Vacante" : "Sustitución"}${o.especialidad_codigo && esMae ? " · esp. " + esc(o.especialidad_codigo) : ""}</td><td class="n">${o.posicion_adj}</td><td class="n">${o.mi_posicion ?? "—"}</td><td>${res}</td></tr>`;
+      }).join("")}</tbody></table></div>`;
+  });
+}
+
+// Paso 2 del registro: ¿a qué especialidades de Maestros puedes optar? (la lista de Maestros es única y no las indica)
+async function pedirEsp(forzar) {
+  let hayMae = false, esp = null;
+  try { hayMae = ((await sb.rpc("mi_panorama")).data || []).some(r => r.cuerpo === "maestros"); } catch (e) {}
+  try { esp = ((await sb.from("perfiles").select("esp_maestros").eq("id", USER.id).maybeSingle()).data || {}).esp_maestros; } catch (e) {}
+  if (!forzar && (!hayMae || (esp && esp.length))) return renderApartado();
+  $("analisis").hidden = true;
+  $("perfil").innerHTML = `<h2>¿A qué especialidades puedes optar?</h2><p style="margin:0 0 .75rem">Estás en la lista única de Maestros, que no indica especialidad. Marca <strong>todas las que tengas</strong>: así te mostramos hasta dónde se llega en cada una. Se guardan en tu apartado y no se podrán cambiar después.</p>
+    <div id="pe-list" class="filters">${ESPU.filter(e => e.cuerpo === "maestros").map(e => `<label style="flex-direction:row;align-items:center;gap:.4rem"><input type="checkbox" value="${esc(e.codigo)}" style="min-width:0"> ${esc(e.codigo)} · ${esc(e.nombre)}</label>`).join("")}</div>
+    <p class="note" id="pe-msg" role="status"></p><button class="btn" id="pe-ok">Guardar y continuar</button>`;
+  $("pe-ok").onclick = async () => {
+    const sel = [...$("pe-list").querySelectorAll("input:checked")].map(i => i.value);
+    if (!sel.length) { $("pe-msg").textContent = "Marca al menos una especialidad."; return; }
+    const { error } = await sb.from("perfiles").upsert({ id: USER.id, esp_maestros: sel });
+    if (error) { $("pe-msg").textContent = "No se pudo guardar: " + error.message; return; }
+    renderApartado();
+  };
+}
+
+async function situacion() {
+  $("s-cards").innerHTML = '<div class="panel">Cargando…</div>'; $("u-body").innerHTML = ""; $("h-body").innerHTML = "";
+  const [a, b] = await Promise.all([sb.rpc("mi_situacion"), sb.rpc("mi_panorama")]);
+  if ((a.error || b.error || {}).message === "sin_acceso") { pintarAcceso({ cobro_activo: true, activo: false, precio: "9.99" }); $("analisis").hidden = true; return; }
+  if (a.error || b.error) { $("s-cards").innerHTML = `<div class="panel err">${esc((a.error || b.error).message)}</div>`; return; }
+  const hist = a.data || [], pan = b.data || [];
+  const histDe = r => hist.filter(h => h.cuerpo === r.cuerpo && h.bolsa === r.bolsa);   // ya viene de la más reciente a la más antigua
+
+  // especialidades de Maestros (la lista de Maestros es única y no indica especialidad)
+  let esp = [];
+  const hayMae = pan.some(r => r.cuerpo === "maestros");
+  if (hayMae) {
+    try { esp = ((await sb.from("perfiles").select("esp_maestros").eq("id", USER.id).maybeSingle()).data || {}).esp_maestros || []; } catch (e) {}
+    $("mae-esp").hidden = true;
+  }
+  const alc = hayMae && esp.length ? ((await sb.rpc("mi_alcance_maestros")).data || []) : [];
+
+  $("s-cards").innerHTML = pan.length
+    ? pan.map(r => tarjeta(r, histDe(r), r.cuerpo === "maestros" ? alc : null)).join("")
+    : '<div class="panel">No hemos encontrado tu nombre en las listas cargadas.</div>';
+  oportunidades(pan);
+  const ult = pan.length ? pan.map(r => r.ult_tanda).sort().pop() : null;
+  $("s-aviso").textContent = ult ? `Datos hasta la lista de adjudicaciones continuas del ${fmtF(ult)}.` : "";
+
+  // últimas adjudicaciones en tus bolsas (con hasta dónde se llegó, medido en competidores por delante)
+  try {
+    let html = "";
+    for (const r of pan) {
+      const mae = r.cuerpo === "maestros", sel = mae ? esp : [];
+      html += `<h3 style="margin:1rem 0 .3rem;font:600 1rem var(--body)">${esc(tituloLista(r))}</h3>`;
+      if (mae && !sel.length) { html += '<p class="note">Elige abajo tus especialidades de Maestros para ver las adjudicaciones.</p>'; continue; }
+      const f = mae ? `&especialidad_codigo=in.(${sel.map(enc).join(",")})` : "";
+      const rows = await getJ(`adjudicaciones_continuas?select=instantanea_id,posicion,tipo,horas,centro_codigo,especialidad_codigo,instantaneas(fecha)&lista_id=eq.${r.lista_id}${f}&order=instantanea_id.desc,posicion.desc&limit=400`);
+      if (!rows.length) { html += '<p class="note">Todavía no ha habido adjudicaciones continuas en esta bolsa.</p>'; continue; }
+      const iid = rows[0].instantanea_id, mias = rows.filter(x => x.instantanea_id === iid), fecha = mias[0].instantaneas.fecha;
+      let xmax = null;
+      try { xmax = Math.max(...(await getJ(`alcance?select=x_max,especialidad_codigo&instantanea_id=eq.${iid}&lista_id=eq.${r.lista_id}${f}`)).map(x => x.x_max)); } catch (e) {}
+      const dentro = xmax !== null && isFinite(xmax) ? (r.estado === 2 || r.estado === 3 || r.estado === 4
+        ? (r.x <= xmax ? ` Se llegó a alguien con ${xmax} competidores por delante; tú tienes ${r.x}: <strong>tu puesto quedaba dentro del alcance de esa tanda</strong>.` : ` Se llegó a alguien con ${xmax} competidores por delante; tú tienes ${r.x}: tu puesto quedaba fuera del alcance de esa tanda.`) : "") : "";
+      const cen = {}; (await getJ(`centros?select=codigo,nombre,localidad&codigo=in.(${[...new Set(mias.map(x => x.centro_codigo))].map(enc).join(",")})`)).forEach(c => cen[c.codigo] = c);
+      html += `<p style="margin:.2rem 0 .5rem"><strong>${mias.length} adjudicaci${mias.length === 1 ? "ón" : "ones"} el ${fmtF(fecha)}</strong> (última tanda con plazas en esta bolsa).${dentro}</p>
+        <div class="scroll"><table><thead><tr><th class="n">Posición</th><th>Localidad</th><th>Centro</th><th>Tipo</th></tr></thead><tbody>${mias.slice(0, 8).map(x => { const c = cen[x.centro_codigo] || {}; return `<tr><td class="n">${x.posicion}</td><td>${esc(c.localidad || "")}</td><td>${esc(c.nombre || x.centro_codigo)}</td><td>${x.tipo === "vacante" ? "Vacante" : "Sustitución"}</td></tr>`; }).join("")}</tbody></table></div>${mias.length > 8 ? `<p class="note">Mostrando 8 de ${mias.length}.</p>` : ""}`;
+    }
+    $("u-body").innerHTML = html;
+  } catch (e) { $("u-body").innerHTML = `<p class="err">${esc(e.message)}</p>`; }
+
+  // hasta dónde se llegó otros años (con tu posición de inicio de curso)
+  try {
+    let h = "";
+    for (const r of pan) {
+      const ini = histDe(r).find(x => x.tipo === "inicio_curso");
+      if (!ini) continue;
+      const sel = r.cuerpo === "maestros" ? esp : [r.bolsa];
+      for (const e of sel) {
+        const li = await estimateHTML(r.cuerpo, e, ini.posicion);
+        if (li) h += `<h3 style="margin:1rem 0 .3rem;font:600 1rem var(--body)">${esc(r.cuerpo === "maestros" ? "Maestros · " + e : tituloLista(r))}</h3><ul class="l">${li}</ul>`;
+      }
+    }
+    $("h-body").innerHTML = h || '<p class="note">Sin datos todavía.</p>';
+  } catch (e) { $("h-body").innerHTML = ""; }
+}
+</script>
+</body>
+</html>
