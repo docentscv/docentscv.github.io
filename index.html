@@ -184,6 +184,18 @@ details.panel[open]>summary{margin-bottom:.8rem}
     <h1>Consulta</h1>
     <div class="hero" id="hero"><div class="k">Adjudicaciones continuas</div><div class="h">Cargando las últimas adjudicaciones…</div></div>
 
+    <details class="panel" id="of-panel" open hidden>
+      <summary id="of-sum">Plazas ofertadas</summary>
+      <div class="filters">
+        <label>Cuerpo <select id="of-cuerpo"></select></label>
+        <label>Especialidad <select id="of-esp"></select></label>
+        <label>Provincia <select id="of-prov"><option value="">Todas</option><option>Alicante</option><option>Castelló</option><option>València</option></select></label>
+        <label>Localidad o centro <input id="of-q" type="search" placeholder="Filtrar"></label>
+      </div>
+      <p class="note" id="of-info" style="margin:.2rem 0 .5rem"></p>
+      <div id="of-body"></div>
+    </details>
+
     <details class="panel" id="ul-panel" open>
       <summary>Últimas adjudicaciones</summary>
       <div class="filters">
@@ -275,14 +287,14 @@ details.panel[open]>summary{margin-bottom:.8rem}
     <div class="panel" id="admin">
       <h2>Subir PDF de adjudicaciones</h2>
       <div class="filters">
-        <label>Tipo <select id="ad-tipo"><option value="continua">Adjudicación continua</option><option value="inicio_curso">Inicio de curso (se carga a mano)</option></select></label>
-        <label>Cuerpo <select id="ad-cuerpo"><option value="maestros">Maestros</option><option value="otros">Secundaria y otros cuerpos</option></select></label>
+        <label>Tipo <select id="ad-tipo"><option value="continua">Adjudicación continua</option><option value="ofertas">Plazas ofertadas (AAMMDD_pue_prov.pdf)</option><option value="inicio_curso">Inicio de curso (se carga a mano)</option></select></label>
+        <label id="ad-l-cuerpo">Cuerpo <select id="ad-cuerpo"><option value="maestros">Maestros</option><option value="otros">Secundaria y otros cuerpos</option></select></label>
         <label>Archivo PDF <input id="ad-file" type="file" accept="application/pdf"></label>
         <button class="btn" id="ad-up">Subir</button>
       </div>
       <p class="note" id="ad-msg" role="status" style="margin:0 0 .6rem"></p>
       <div class="scroll"><table><thead><tr><th>Archivo</th><th>Tipo</th><th>Cuerpo</th><th>Estado</th><th>Fecha</th></tr></thead><tbody id="ad-rows"></tbody></table></div>
-      <p class="note">Nombre del archivo como lo publica la Conselleria (por ejemplo 261022_lis_mae.pdf o 261022_lis_sec.pdf). Cada 15 minutos se procesan los pendientes; recarga la lista para ver el resultado.</p>
+      <p class="note">Nombre del archivo como lo publica la Conselleria (por ejemplo 261022_lis_mae.pdf, 261022_lis_sec.pdf o, para plazas ofertadas, 261027_pue_prov.pdf). Cada 15 minutos se procesan los pendientes; recarga la lista para ver el resultado.</p>
     </div>
   </main>
 
@@ -414,7 +426,7 @@ async function consultaInit() {
     $("hero").innerHTML = `<div class="k">Adjudicaciones continuas</div><div class="h">Última tanda: ${fmtF(ult)}</div>
       <div class="g"><div><b>${enUlt(m) + enUlt(o)}</b><small>plazas adjudicadas en la última tanda</small></div><div><b>${m.rows.length}</b><small>Maestros (última lista, ${m.ins ? fmtF(m.ins.fecha) : "—"})</small></div><div><b>${o.rows.length}</b><small>Secundaria y otros (última lista, ${o.ins ? fmtF(o.ins.fecha) : "—"})</small></div><div><b>${tandasN}</b><small>fechas con adjudicaciones este curso</small></div></div>`;
     $("home-stats").innerHTML = `<div><b>${enUlt(m) + enUlt(o)}</b><small>plazas adjudicadas en la última tanda</small></div><div><b>${fmtF(ult).slice(0, 5)}</b><small>última tanda (${fmtF(ult).slice(6)})</small></div><div><b>${tandasN}</b><small>fechas con adjudicaciones este curso</small></div>`;
-    ultimas();
+    ultimas(); ofertasInit();
   } catch (e) { $("hero").innerHTML = `<div class="h">No se pudieron cargar las adjudicaciones</div><div>${esc(e.message)}</div>`; }
 }
 async function ultimas() {
@@ -470,6 +482,52 @@ $("ul-more").addEventListener("click", ultMas);
 $("bs-cuerpo").addEventListener("change", () => { bsEsp(); bsBuscar(); });
 $("bs-esp").addEventListener("change", bsBuscar);
 $("bs-q").addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(bsBuscar, 450); });
+
+/* ---------- Plazas ofertadas por la Conselleria ---------- */
+let OFER = null;
+async function cargarOfertas() {
+  if (OFER) return OFER;
+  try {
+    const f = await getJ("plazas_ofertadas?select=fecha,version&order=fecha.desc&limit=1");
+    if (!f.length) return (OFER = { fecha: null, rows: [] });
+    const rows = await getJ(`plazas_ofertadas?select=cuerpo,especialidad_codigo,provincia,localidad,centro_codigo,centro,tipo,detalle,codigo_plaza,req_ling,observ&fecha=eq.${f[0].fecha}&order=especialidad_codigo.asc&limit=1000`);
+    await cargarCentros(rows.map(r => r.centro_codigo));
+    rows.forEach(r => { const c = CEN[r.centro_codigo]; if (c) { r.centro = c.nombre || r.centro; r.localidad = c.localidad || r.localidad; r.provincia = c.provincia || r.provincia; } });
+    return (OFER = { fecha: f[0].fecha, version: f[0].version, rows });
+  } catch (e) { return (OFER = { fecha: null, rows: [] }); }
+}
+const ultFechaContinua = () => INST.filter(i => i.tipo === "continua").map(i => i.fecha).sort().pop() || "";
+const ofertaVigente = () => !!(OFER && OFER.fecha && OFER.fecha > ultFechaContinua());
+const alcanceUlt = esp => { const g = famDe(esp) === "maestros" ? "maestros" : "otros", u = ULT[g]; if (!u || !u.ins) return null; const ps = u.rows.filter(r => r.especialidad_codigo === esp).map(r => r.posicion); return ps.length ? { f: u.ins.fecha, p: Math.max(...ps) } : { f: u.ins.fecha, p: null }; };
+async function ofertasInit() {
+  const o = await cargarOfertas();
+  if (!o.fecha) { $("of-panel").hidden = true; return; }
+  $("of-panel").hidden = false;
+  const vig = ofertaVigente();
+  $("of-sum").textContent = (vig ? "Plazas que se ofertan en la próxima adjudicación" : "Plazas ofertadas") + " · " + fmtF(o.fecha);
+  const cus = [...new Set(o.rows.map(r => r.cuerpo))];
+  $("of-cuerpo").innerHTML = '<option value="">Todos los cuerpos</option>' + cus.map(c => `<option value="${esc(c)}">${esc(cuerpoNombre(c))}</option>`).join("");
+  ofEsp(); ofPintar();
+}
+function ofEsp() {
+  const cu = $("of-cuerpo").value, es = new Map();
+  OFER.rows.filter(r => !cu || r.cuerpo === cu).forEach(r => es.set(r.especialidad_codigo, 1));
+  $("of-esp").innerHTML = '<option value="">Todas las especialidades</option>' + [...es.keys()].sort().map(c => `<option value="${esc(c)}">${esc(espNom("", c))}</option>`).join("");
+}
+function ofPintar() {
+  const cu = $("of-cuerpo").value, es = $("of-esp").value, pv = $("of-prov").value, q = $("of-q").value.trim().toLowerCase();
+  const fil = OFER.rows.filter(r => (!cu || r.cuerpo === cu) && (!es || r.especialidad_codigo === es) && (!pv || r.provincia === pv) && (!q || ((r.centro || "") + " " + (r.localidad || "")).toLowerCase().includes(q)));
+  const nv = fil.filter(r => r.tipo === "vacante").length;
+  $("of-info").innerHTML = `<strong>${fil.length}</strong> plaza${fil.length === 1 ? "" : "s"} (${nv} vacante${nv === 1 ? "" : "s"}, ${fil.length - nv} sustitucion${fil.length - nv === 1 ? "" : "es"}). ${ofertaVigente() ? "Se adjudican el " + fmtF(OFER.fecha) + "." : "Adjudicación del " + fmtF(OFER.fecha) + "."}${OFER.version === "prov" ? " Lista provisional." : ""}`;
+  const gr = new Map(); fil.forEach(r => { if (!gr.has(r.especialidad_codigo)) gr.set(r.especialidad_codigo, []); gr.get(r.especialidad_codigo).push(r); });
+  $("of-body").innerHTML = fil.length ? [...gr].map(([e, rs]) => {
+    const a = alcanceUlt(e), ctx = a ? (a.p ? ` · en la última tanda (${fmtF(a.f)}) se llegó hasta la posición <strong>${a.p}</strong>` : ` · sin adjudicaciones en la última tanda (${fmtF(a.f)})`) : "";
+    return `<div class="note" style="margin:.9rem 0 .2rem"><strong>${esc(espNom("", e))}</strong> — ${rs.length} plaza${rs.length === 1 ? "" : "s"}${ctx}</div>` + rs.map(r => `<div class="it"><div class="a"><b>${esc(r.centro || r.centro_codigo)}</b><small>${esc(r.localidad || "")}${r.req_ling ? " · req. " + esc(r.req_ling.replace(/\.$/, "")) : ""}${r.observ ? " · " + esc(r.observ) : ""}</small></div><div class="z"><span class="tag">${r.tipo === "vacante" ? "Vacante" : "Sustitución"}</span></div></div>`).join("");
+  }).join("") : '<p class="note">No hay plazas con esos filtros.</p>';
+}
+$("of-cuerpo").addEventListener("change", () => { ofEsp(); ofPintar(); });
+["of-esp", "of-prov"].forEach(id => $(id).addEventListener("change", ofPintar));
+$("of-q").addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(ofPintar, 300); });
 
 /* ---------- CUENTAS (Supabase Auth) ---------- */
 function initAuth() {
@@ -595,6 +653,7 @@ async function adminLista() {
   $("ad-rows").innerHTML = error ? `<tr><td colspan="5" class="err">${esc(error.message)}</td></tr>`
     : data.map(i => `<tr><td>${esc(i.nombre_original)}</td><td>${esc(i.tipo)}</td><td>${esc(i.cuerpo)}</td><td>${esc(i.estado)}${i.mensaje ? " · " + esc(i.mensaje) : ""}</td><td>${esc(new Date(i.creado).toLocaleString("es-ES"))}</td></tr>`).join("");
 }
+$("ad-tipo").onchange = () => { $("ad-l-cuerpo").hidden = $("ad-tipo").value === "ofertas"; };
 $("ad-up").onclick = async () => {
   const f = $("ad-file").files[0], msg = s => { $("ad-msg").textContent = s; };
   if (!f) return msg("Elige un archivo PDF.");
@@ -603,7 +662,7 @@ $("ad-up").onclick = async () => {
   const path = "pendientes/" + Date.now() + "_" + f.name.replace(/[^\w.\-]/g, "_");
   try {
     const up = await sb.storage.from("pdfs").upload(path, f, { contentType: "application/pdf" }); if (up.error) throw up.error;
-    const ins = await sb.from("importaciones").insert({ archivo: path, nombre_original: f.name, tipo: $("ad-tipo").value, cuerpo: $("ad-cuerpo").value, creado_por: USER.id }); if (ins.error) throw ins.error;
+    const ins = await sb.from("importaciones").insert({ archivo: path, nombre_original: f.name, tipo: $("ad-tipo").value, cuerpo: $("ad-tipo").value === "ofertas" ? "todos" : $("ad-cuerpo").value, creado_por: USER.id }); if (ins.error) throw ins.error;
     msg("PDF subido. Se procesará automáticamente en unos 15 minutos; recarga esta lista para ver el resultado."); $("ad-file").value = ""; adminLista();
   } catch (e) { msg("No se pudo subir: " + e.message); }
 };
@@ -690,28 +749,35 @@ function tarjeta(r, hist, alc) {
   return `<div class="sc" style="${vars}">${cab}${st(EST_TXT[r.estado] || "")}${k}${prob}${al}<div class="sc-b">${otras ? `<p class="note">Por delante de ti: ${r.x} compiten (pidieron plazas ofertadas y no las consiguieron) · ${otras}.</p>` : ""}${ausente}<p class="note">${esc(act)}</p>${charts(hist)}</div></div>`;
 }
 
-async function oportunidades(pan) {
+async function oportunidades(pan, espMia) {
+  await cargarOfertas();
   const { data, error } = await sb.rpc("mi_oportunidades");
   if (error) { $("oport-body").innerHTML = `<p class="err">${esc(error.message)}</p>`; return; }
   const por = {}; (data || []).forEach(o => (por[o.lista_id] ||= []).push(o));
   let html = "";
   pan.forEach(r => {
     const rows = por[r.lista_id] || [];
+    const ofe = ofertaVigente() ? OFER.rows.filter(o => r.cuerpo === "maestros" ? (o.cuerpo === "maestros" && (espMia || []).includes(o.especialidad_codigo)) : (o.cuerpo === r.cuerpo && o.especialidad_codigo === r.bolsa)) : [];
     html += `<div style="margin:0 0 1.4rem"><h3 style="margin:0 0 .3rem;font:600 1rem var(--body)">${esc(tituloLista(r))}</h3>`;
-    if (!rows.length) { html += `<p class="note">${r.cuerpo === "maestros" ? "Elige abajo tus especialidades de Maestros para ver oportunidades." : "Todavía no ha habido adjudicaciones en esta bolsa."}</p></div>`; return; }
+    if (!rows.length && !ofe.length) { html += `<p class="note">${r.cuerpo === "maestros" ? "Elige abajo tus especialidades de Maestros para ver oportunidades." : "Todavía no ha habido adjudicaciones en esta bolsa."}</p></div>`; return; }
     const conDato = rows.filter(o => o.mi_posicion != null), K = conDato.filter(o => o.mi_posicion < o.posicion_adj).length, tandas = new Set(rows.map(o => o.fecha)).size;
     html += `<p style="margin:.2rem 0 .6rem">En las últimas ${tandas} tanda${tandas === 1 ? "" : "s"} se adjudicaron <strong>${rows.length}</strong> plaza${rows.length === 1 ? "" : "s"} en esta bolsa${r.cuerpo === "maestros" ? " (de tus especialidades)" : ""}. ` +
       (conDato.length ? `En las ${conDato.length} de ellas en las que apareces en la lista, tú ibas por delante de la persona adjudicada en <strong>${K}</strong> (${Math.round(100 * K / conDato.length)} %).` : "No apareces en esas listas (puede que ya tengas plaza), así que no hay comparación posible.") + `</p>`;
-    const ultima = rows[0].fecha, cen = new Map();
+    const ultima = rows.length ? rows[0].fecha : "", cen = new Map(), ofCod = new Map();
+    ofe.forEach(o => { if (!ofCod.has(o.centro_codigo)) ofCod.set(o.centro_codigo, { n: o.centro || o.centro_codigo, l: o.localidad || "", k: 0 }); ofCod.get(o.centro_codigo).k++; });
     rows.forEach(o => { if (!cen.has(o.centro_codigo)) cen.set(o.centro_codigo, { n: o.centro || o.centro_codigo, l: o.localidad || "", u: o.fecha === ultima }); });
-    const opt = u => [...cen].filter(([, c]) => c.u === u).sort((a, b) => (a[1].l + a[1].n).localeCompare(b[1].l + b[1].n)).map(([k, c]) => `<option value="${esc(k)}">${esc(c.l)} · ${esc(c.n)}</option>`).join("");
-    html += `<label>Centro<select data-lista="${r.lista_id}" style="max-width:100%"><option value="">Elige un centro…</option><optgroup label="Última tanda con plazas (${fmtF(ultima)})">${opt(true)}</optgroup><optgroup label="Tandas anteriores">${opt(false)}</optgroup></select></label><div id="op-res-${r.lista_id}" style="margin-top:.6rem"></div></div>`;
+    const optO = [...ofCod].sort((a, b) => (a[1].l + a[1].n).localeCompare(b[1].l + b[1].n)).map(([k, c]) => `<option value="${esc(k)}">${esc(c.l)} · ${esc(c.n)}${c.k > 1 ? " (" + c.k + " plazas)" : ""}</option>`).join("");
+    const opt = u => [...cen].filter(([k, c]) => c.u === u && !ofCod.has(k)).sort((a, b) => (a[1].l + a[1].n).localeCompare(b[1].l + b[1].n)).map(([k, c]) => `<option value="${esc(k)}">${esc(c.l)} · ${esc(c.n)}</option>`).join("");
+    html += `<label>Centro<select data-lista="${r.lista_id}" style="max-width:100%"><option value="">Elige un centro…</option>${optO ? `<optgroup label="📣 Se ofertan en la próxima adjudicación (${fmtF(OFER.fecha)})">${optO}</optgroup>` : ""}<optgroup label="Última tanda con plazas (${fmtF(ultima)})">${opt(true)}</optgroup><optgroup label="Tandas anteriores">${opt(false)}</optgroup></select></label><div id="op-res-${r.lista_id}" style="margin-top:.6rem"></div></div>`;
   });
   $("oport-body").innerHTML = html;
   $("oport-body").querySelectorAll("select").forEach(sel => sel.onchange = () => {
     const out = $("op-res-" + sel.dataset.lista), rows = (por[sel.dataset.lista] || []).filter(o => o.centro_codigo === sel.value);
     const esMae = (pan.find(x => String(x.lista_id) === sel.dataset.lista) || {}).cuerpo === "maestros";
     if (!sel.value) { out.innerHTML = ""; return; }
+    const rp = pan.find(x => String(x.lista_id) === sel.dataset.lista) || {};
+    const ofC = ofertaVigente() ? OFER.rows.filter(o => o.centro_codigo === sel.value && (rp.cuerpo === "maestros" ? (o.cuerpo === "maestros" && (espMia || []).includes(o.especialidad_codigo)) : (o.cuerpo === rp.cuerpo && o.especialidad_codigo === rp.bolsa))) : [];
+    const bannerO = ofC.length ? `<div class="op-b go" style="--c:var(--amb);--cb:var(--amb-bg)" role="status"><div class="k">📣 Se ofertan en este centro</div><div class="h">${ofC.length === 1 ? "1 plaza" : ofC.length + " plazas"} en la próxima adjudicación (${fmtF(OFER.fecha)})</div>${ofC.map(o => `<p>${o.tipo === "vacante" ? "<strong>Vacante</strong>" : "<strong>Sustitución</strong>"}${rp.cuerpo === "maestros" ? " · esp. " + esc(o.especialidad_codigo) : ""}${o.req_ling ? " · req. " + esc(o.req_ling.replace(/\.$/, "")) : ""}${o.observ ? " · " + esc(o.observ) : ""}</p>`).join("")}</div>` : "";
     const K = rows.filter(o => o.mi_posicion != null && o.mi_posicion < o.posicion_adj).length;
     const dato = rows.filter(o => o.mi_posicion != null), N = dato.length, ult = dato[0];
     let cartel = "";
@@ -722,11 +788,18 @@ async function oportunidades(pan) {
         ? `<div class="op-b go" style="--c:var(--amb);--cb:var(--amb-bg)" role="status"><div class="k">🔥 Tu oportunidad en este centro</div><div class="h">¡Estás muy cerca!</div><span class="n">${gap}</span> puestos te separaron de la última persona adjudicada aquí (${fmtF(ult.fecha)}).<p>Con unas pocas tandas más, <strong>podrías alcanzarla</strong>.</p></div>`
         : `<div class="op-b" style="--c:var(--blu);--cb:var(--blu-bg)" role="status"><div class="k">📍 Tu oportunidad en este centro</div><div class="h">Todavía lejos por ahora</div><span class="n">${gap}</span> puestos te separaron de la última persona adjudicada aquí (${fmtF(ult.fecha)}).<p>Las listas avanzan en cada tanda: vuelve a mirar tras las próximas adjudicaciones.</p></div>`;
     }
-    out.innerHTML = cartel + `<p class="note" style="margin:0 0 .4rem">Este centro ha adjudicado ${rows.length} plaza${rows.length === 1 ? "" : "s"} en esta bolsa en las últimas tandas; en ${K} tú ibas por delante.</p>
+    if (!cartel && ofC.length) {
+      const ref = (por[sel.dataset.lista] || []).filter(o => rp.cuerpo !== "maestros" || ofC.some(x => x.especialidad_codigo === o.especialidad_codigo));
+      const f0 = ref.map(o => o.fecha).sort().pop(), top = f0 ? Math.max(...ref.filter(o => o.fecha === f0).map(o => o.posicion_adj)) : null;
+      if (top) { const gap = rp.posicion - top;
+        cartel = gap <= 0 ? `<div class="op-b go" style="--c:var(--ok);--cb:var(--ok-bg)" role="status"><div class="k">🎯 Tu oportunidad</div><div class="h">¡Estás dentro del alcance!</div>En la última tanda con adjudicaciones en tu bolsa (${fmtF(f0)}) se llegó hasta la posición <strong>${top}</strong>. Tú estás en la <strong>${rp.posicion}</strong>.</div>`
+          : `<div class="op-b ${gap / rp.posicion < 0.15 ? "go" : ""}" style="--c:var(--${gap / rp.posicion < 0.15 ? "amb" : "blu"});--cb:var(--${gap / rp.posicion < 0.15 ? "amb" : "blu"}-bg)" role="status"><div class="k">📍 Tu oportunidad</div><div class="h">${gap / rp.posicion < 0.15 ? "¡Estás muy cerca!" : "Todavía lejos por ahora"}</div><span class="n">${gap}</span> puestos te separan de hasta donde se llegó en la última tanda (posición ${top}, ${fmtF(f0)}).</div>`; }
+    }
+    out.innerHTML = bannerO + cartel + (!rows.length ? "" : `<p class="note" style="margin:0 0 .4rem">Este centro ha adjudicado ${rows.length} plaza${rows.length === 1 ? "" : "s"} en esta bolsa en las últimas tandas; en ${K} tú ibas por delante.</p>
       <div class="scroll"><table><thead><tr><th>Fecha</th><th>Plaza</th><th class="n">Puesto del adjudicado</th><th class="n">Tu puesto ese día</th><th>Resultado</th></tr></thead><tbody>${rows.map(o => {
         const res = o.mi_posicion == null ? "Sin dato" : o.mi_posicion < o.posicion_adj ? `<span class="tag">Ibas por delante</span> (${o.posicion_adj - o.mi_posicion} puestos)` : o.mi_posicion === o.posicion_adj ? "Eras tú" : `Iba por delante de ti (${o.mi_posicion - o.posicion_adj} puestos)`;
         return `<tr><td>${fmtF(o.fecha)}</td><td>${o.plaza_tipo === "vacante" ? "Vacante" : "Sustitución"}${o.especialidad_codigo && esMae ? " · esp. " + esc(o.especialidad_codigo) : ""}</td><td class="n">${o.posicion_adj}</td><td class="n">${o.mi_posicion ?? "—"}</td><td>${res}</td></tr>`;
-      }).join("")}</tbody></table></div>`;
+      }).join("")}</tbody></table></div>`);
   });
 }
 
@@ -769,7 +842,7 @@ async function situacion() {
   $("s-cards").innerHTML = pan.length
     ? pan.map(r => tarjeta(r, histDe(r), r.cuerpo === "maestros" ? alc : null)).join("")
     : '<div class="panel">No hemos encontrado tu nombre en las listas cargadas.</div>';
-  oportunidades(pan);
+  oportunidades(pan, esp);
   const ult = pan.length ? pan.map(r => r.ult_tanda).sort().pop() : null;
   $("s-aviso").textContent = ult ? `Datos hasta la lista de adjudicaciones continuas del ${fmtF(ult)}.` : "";
 
