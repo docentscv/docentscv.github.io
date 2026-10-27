@@ -52,6 +52,8 @@ h2{font:700 1.3rem var(--display);margin:0 0 .5rem}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:.75rem;padding:1.1rem;margin-bottom:1rem}
 .banner{background:var(--warn-bg);color:var(--warn-ink);padding:.6rem .9rem;border-radius:.5rem;font-size:.92rem;margin-bottom:1rem}
 .filters{display:flex;flex-wrap:wrap;gap:.75rem;margin-bottom:1rem;align-items:flex-end}
+label.chk{flex-direction:row;align-items:center;gap:.7rem;padding:.7rem .9rem;margin:.8rem 0 .3rem;border:2px solid var(--blu);background:var(--blu-bg);border-radius:.8rem;color:var(--ink,inherit);font-size:1rem;font-weight:600;cursor:pointer}
+label.chk input{flex:none;width:1.4rem;min-width:0;height:1.4rem;padding:0;margin:0;accent-color:var(--blu);cursor:pointer}
 label{display:flex;flex-direction:column;font-size:.85rem;color:var(--muted);gap:.25rem;font-weight:500}
 select,input{font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:.5rem;padding:.5rem .65rem;min-width:9.5rem}
 select:focus-visible,input:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
@@ -649,7 +651,7 @@ async function renderApartado() {
     $("analisis").hidden = true; $("acc-box").innerHTML = "";
     $("perfil").innerHTML = `<h2>Identifícate</h2><p style="margin:0 0 .75rem">Escribe tu nombre exactamente como sale en las listas oficiales: apellidos, una coma y el nombre. <strong>No se podrá cambiar después.</strong></p>
       <div class="filters"><label>Tu nombre <input id="n-nom" type="text" autocomplete="off" placeholder="APELLIDO1 APELLIDO2, NOMBRE" style="min-width:min(22rem,80vw)"></label><button class="btn" id="n-ok">Confirmar</button></div>
-      <label style="display:flex;gap:.5rem;align-items:flex-start;margin:.2rem 0 .6rem;cursor:pointer"><input type="checkbox" id="n-av" style="margin-top:.25rem"><span>Quiero recibir por email un aviso cuando salgan plazas ofertadas en mis bolsas (opcional; puedes cambiarlo cuando quieras).</span></label><p class="note" id="n-msg" role="status"></p>`;
+      <label class="chk"><input type="checkbox" id="n-av"><span>Quiero recibir por email un aviso cuando salgan plazas ofertadas en mis bolsas (opcional; puedes cambiarlo cuando quieras).</span></label><p class="note" id="n-msg" role="status"></p>`;
     $("n-ok").onclick = async () => {
       const nom = $("n-nom").value.trim(), msg = s => { $("n-msg").textContent = s; };
       if (nom.length < 6) return msg("Escribe tu nombre completo: apellidos, una coma y el nombre.");
@@ -667,7 +669,7 @@ async function renderApartado() {
   try { espMia = ((await sb.from("perfiles").select("esp_maestros").eq("id", USER.id).maybeSingle()).data || {}).esp_maestros || []; } catch (e) {}
   const espTxt = espMia.map(c => { const e = ESPU.find(x => x.codigo === c); return `<span class="tag" style="margin:.15rem .25rem 0 0">${esc(c)} · ${esc(e ? e.nombre : "")}</span>`; }).join("");
   $("perfil").innerHTML = `<div class="note" style="margin:0">Tu nombre en las listas</div><div class="big" style="font-size:1.6rem">${esc(idn)}</div>${espTxt ? `<div class="note" style="margin:.5rem 0 0">Tus especialidades de Maestros</div><div>${espTxt}</div>` : ""}<p class="note">Si hay un error en tu nombre o especialidades, escríbenos para corregirlo.</p>
-    <label style="display:flex;gap:.5rem;align-items:flex-start;margin-top:.7rem;cursor:pointer"><input type="checkbox" id="av-chk" style="margin-top:.25rem" disabled><span>Avisarme por email cuando salgan plazas ofertadas en mis bolsas</span></label><p class="note" id="av-msg" role="status" style="margin:.2rem 0 0"></p>`
+    <label class="chk"><input type="checkbox" id="av-chk" disabled><span>Avisarme por email cuando salgan plazas ofertadas en mis bolsas</span></label><p class="note" id="av-msg" role="status" style="margin:.2rem 0 0"></p>`
     + (ADMIN ? `<button class="btn" id="adesp" style="margin-top:.4rem">Administrador: cambiar mis especialidades</button>` : "")
     + (ADMIN ? `<details style="margin-top:.6rem"><summary class="note" style="cursor:pointer">Administrador: ver la web como otra persona</summary>
       <div class="filters" style="margin-top:.5rem"><label>Nombre en las listas <input id="adn-nom" type="text" autocomplete="off" placeholder="APELLIDO1 APELLIDO2, NOMBRE" style="min-width:min(22rem,80vw)"></label><button class="btn" id="adn-ok">Cambiar</button></div>
