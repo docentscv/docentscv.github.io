@@ -320,9 +320,8 @@ details.panel[open]>summary{margin-bottom:.8rem}
       <p class="note" id="of-msg" role="status" style="margin:0 0 1rem"></p>
 
       <h2>2. Subir PDF de adjudicaciones</h2>
-      <p class="note" style="margin:0 0 .5rem">Los listados de adjudicación continua (archivos <b>AAMMDD_lis_mae.pdf</b> para Maestros y <b>AAMMDD_lis_sec.pdf</b> para Secundaria y otros).</p>
+      <p class="note" style="margin:0 0 .5rem">Los listados de adjudicación continua (archivos <b>AAMMDD_lis_mae.pdf</b> para Maestros y <b>AAMMDD_lis_sec.pdf</b> para Secundaria y otros; el cuerpo se detecta solo por el nombre).</p>
       <div class="filters">
-        <label>Cuerpo <select id="ad-cuerpo"><option value="maestros">Maestros</option><option value="otros">Secundaria y otros cuerpos</option></select></label>
         <label>Archivo PDF <input id="ad-file" type="file" accept="application/pdf"></label>
         <button class="btn" id="ad-up">Subir adjudicaciones</button>
       </div>
@@ -797,7 +796,7 @@ function subirPdf(tipo, fileId, msgId, cuerpoFn) {
 }
 $("of-up").onclick = subirPdf("ofertas", "of-file", "of-msg", () => "todos");
 $("df-up").onclick = subirPdf("dificil", "df-file", "df-msg", () => "todos");
-$("ad-up").onclick = subirPdf("continua", "ad-file", "ad-msg", () => $("ad-cuerpo").value);
+$("ad-up").onclick = subirPdf("continua", "ad-file", "ad-msg", () => /_lis_mae\.pdf$/i.test($("ad-file").files[0]?.name || "") ? "maestros" : "otros");
 
 const EST_TXT = {
   1: "Adjudicado: tienes plaza",
