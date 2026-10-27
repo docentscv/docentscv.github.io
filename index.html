@@ -283,6 +283,12 @@ details.panel[open]>summary{margin-bottom:.8rem}
         <p class="note">Orientativo, no garantiza ni descarta ninguna plaza. «Competidores por delante» son las personas que pidieron alguna de las plazas ofertadas y no la consiguieron («No adjudicat»). Vacante: trabajarás hasta el final del curso en el mismo centro. Sustitución: la plaza es temporal, mientras su titular está de baja.</p></div>
       <div class="panel"><h2>Hasta dónde se llegó otros años</h2><div id="h-body"></div></div>
     </div>
+    <details class="panel" id="del-panel"><summary>Eliminar mi cuenta</summary>
+      <p class="note" style="margin:.2rem 0 .6rem">Se borrarán de forma definitiva tu cuenta, tu correo, el nombre asociado y tus datos de acceso. No se puede deshacer. Si pagaste el curso, el pago no se devuelve.</p>
+      <div class="filters"><label>Escribe ELIMINAR para confirmar <input id="del-txt" type="text" autocomplete="off"></label>
+      <button class="btn" id="del-ok" style="background:var(--red-bg);color:var(--red);border:1px solid var(--red)">Eliminar mi cuenta</button></div>
+      <p class="note" id="del-msg" role="status"></p>
+    </details>
   </main>
 
   <main id="v-admin" class="view" hidden>
@@ -585,6 +591,18 @@ $("au-go").onclick = async () => {
     else if (AUTH_MODE === "olvido") { const { error } = await sb.auth.resetPasswordForEmail(mail, { redirectTo: back }); if (error) throw error; msg("Si el correo existe, recibirás un enlace para crear una nueva contraseña."); }
     else { const { error } = await sb.auth.updateUser({ password: pass }); if (error) throw error; RECOVERY = false; show("apartado"); }
   } catch (e) { msg("No se pudo completar: " + errEs(e)); }
+};
+$("del-ok").onclick = async () => {
+  const msg = t => { $("del-msg").textContent = t; };
+  if ($("del-txt").value.trim().toUpperCase() !== "ELIMINAR") return msg("Escribe ELIMINAR para confirmar.");
+  msg("Eliminando…");
+  const { data, error } = await sb.rpc("eliminar_mi_cuenta");
+  if (error) return msg("No se pudo eliminar: " + error.message);
+  if (data === "es_admin") return msg("Esta cuenta es de administrador y no se puede eliminar desde aquí.");
+  if (data !== "ok") return msg("No se pudo eliminar la cuenta.");
+  try { await sb.auth.signOut(); } catch (e) {}
+  USER = null; ADMIN = false; $("del-txt").value = ""; show("home");
+  alert("Tu cuenta se ha eliminado correctamente.");
 };
 $("logout").onclick = async () => { if (sb) await sb.auth.signOut(); USER = null; show("home"); };
 
