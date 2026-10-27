@@ -285,14 +285,24 @@ details.panel[open]>summary{margin-bottom:.8rem}
     <div class="top"><div class="brand">Docents<b>CV</b></div><div><button class="link" data-go="apartado">← Mi apartado</button> · <button class="link" data-go="home">Inicio</button></div></div>
     <h1>Administración</h1>
     <div class="panel" id="admin">
-      <h2>Subir PDF de adjudicaciones</h2>
+      <h2>1. Subir PDF de puestos ofertados</h2>
+      <p class="note" style="margin:0 0 .5rem">Las plazas que salen a adjudicación (archivos <b>AAMMDD_pue_prov.pdf</b> y después <b>AAMMDD_pue_def.pdf</b>).</p>
       <div class="filters">
-        <label>Tipo <select id="ad-tipo"><option value="continua">Adjudicación continua</option><option value="ofertas">Plazas ofertadas (AAMMDD_pue_prov.pdf)</option><option value="inicio_curso">Inicio de curso (se carga a mano)</option></select></label>
-        <label id="ad-l-cuerpo">Cuerpo <select id="ad-cuerpo"><option value="maestros">Maestros</option><option value="otros">Secundaria y otros cuerpos</option></select></label>
-        <label>Archivo PDF <input id="ad-file" type="file" accept="application/pdf"></label>
-        <button class="btn" id="ad-up">Subir</button>
+        <label>Archivo PDF <input id="of-file" type="file" accept="application/pdf"></label>
+        <button class="btn" id="of-up">Subir puestos ofertados</button>
       </div>
-      <p class="note" id="ad-msg" role="status" style="margin:0 0 .6rem"></p>
+      <p class="note" id="of-msg" role="status" style="margin:0 0 1rem"></p>
+
+      <h2>2. Subir PDF de adjudicaciones</h2>
+      <p class="note" style="margin:0 0 .5rem">Los listados de adjudicación continua (archivos <b>AAMMDD_lis_mae.pdf</b> para Maestros y <b>AAMMDD_lis_sec.pdf</b> para Secundaria y otros).</p>
+      <div class="filters">
+        <label>Cuerpo <select id="ad-cuerpo"><option value="maestros">Maestros</option><option value="otros">Secundaria y otros cuerpos</option></select></label>
+        <label>Archivo PDF <input id="ad-file" type="file" accept="application/pdf"></label>
+        <button class="btn" id="ad-up">Subir adjudicaciones</button>
+      </div>
+      <p class="note" id="ad-msg" role="status" style="margin:0 0 1rem"></p>
+
+      <h2>Últimas cargas</h2>
       <div class="scroll"><table><thead><tr><th>Archivo</th><th>Tipo</th><th>Cuerpo</th><th>Estado</th><th>Fecha</th></tr></thead><tbody id="ad-rows"></tbody></table></div>
       <p class="note">Nombre del archivo como lo publica la Conselleria (por ejemplo 261022_lis_mae.pdf, 261022_lis_sec.pdf o, para plazas ofertadas, 261027_pue_prov.pdf). Cada 15 minutos se procesan los pendientes; recarga la lista para ver el resultado.</p>
     </div>
@@ -653,19 +663,22 @@ async function adminLista() {
   $("ad-rows").innerHTML = error ? `<tr><td colspan="5" class="err">${esc(error.message)}</td></tr>`
     : data.map(i => `<tr><td>${esc(i.nombre_original)}</td><td>${esc(i.tipo)}</td><td>${esc(i.cuerpo)}</td><td>${esc(i.estado)}${i.mensaje ? " · " + esc(i.mensaje) : ""}</td><td>${esc(new Date(i.creado).toLocaleString("es-ES"))}</td></tr>`).join("");
 }
-$("ad-tipo").onchange = () => { $("ad-l-cuerpo").hidden = $("ad-tipo").value === "ofertas"; };
-$("ad-up").onclick = async () => {
-  const f = $("ad-file").files[0], msg = s => { $("ad-msg").textContent = s; };
-  if (!f) return msg("Elige un archivo PDF.");
-  if (!/\.pdf$/i.test(f.name)) return msg("El archivo debe ser un PDF.");
-  msg("Subiendo… puede tardar si el archivo es grande.");
-  const path = "pendientes/" + Date.now() + "_" + f.name.replace(/[^\w.\-]/g, "_");
-  try {
-    const up = await sb.storage.from("pdfs").upload(path, f, { contentType: "application/pdf" }); if (up.error) throw up.error;
-    const ins = await sb.from("importaciones").insert({ archivo: path, nombre_original: f.name, tipo: $("ad-tipo").value, cuerpo: $("ad-tipo").value === "ofertas" ? "todos" : $("ad-cuerpo").value, creado_por: USER.id }); if (ins.error) throw ins.error;
-    msg("PDF subido. Se procesará automáticamente en unos 15 minutos; recarga esta lista para ver el resultado."); $("ad-file").value = ""; adminLista();
-  } catch (e) { msg("No se pudo subir: " + e.message); }
-};
+function subirPdf(tipo, fileId, msgId, cuerpoFn) {
+  return async () => {
+    const f = $(fileId).files[0], msg = s => { $(msgId).textContent = s; };
+    if (!f) return msg("Elige un archivo PDF.");
+    if (!/\.pdf$/i.test(f.name)) return msg("El archivo debe ser un PDF.");
+    msg("Subiendo… puede tardar si el archivo es grande.");
+    const path = "pendientes/" + Date.now() + "_" + f.name.replace(/[^\w.\-]/g, "_");
+    try {
+      const up = await sb.storage.from("pdfs").upload(path, f, { contentType: "application/pdf" }); if (up.error) throw up.error;
+      const ins = await sb.from("importaciones").insert({ archivo: path, nombre_original: f.name, tipo, cuerpo: cuerpoFn(), creado_por: USER.id }); if (ins.error) throw ins.error;
+      msg("PDF subido. Se procesará automáticamente en unos 15 minutos; recarga esta lista para ver el resultado."); $(fileId).value = ""; adminLista();
+    } catch (e) { msg("No se pudo subir: " + e.message); }
+  };
+}
+$("of-up").onclick = subirPdf("ofertas", "of-file", "of-msg", () => "todos");
+$("ad-up").onclick = subirPdf("continua", "ad-file", "ad-msg", () => $("ad-cuerpo").value);
 
 const EST_TXT = {
   1: "Adjudicado: tienes plaza",
