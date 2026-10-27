@@ -310,7 +310,16 @@ details.panel[open]>summary{margin-bottom:.8rem}
   <main id="v-admin" class="view" hidden>
     <div class="top"><div class="brand">Docents<b>CV</b></div><div><button class="link" data-go="apartado">← Mi apartado</button> · <button class="link" data-go="home">Inicio</button></div></div>
     <h1>Administración</h1>
-    <div class="panel" id="admin">
+    <details class="panel" id="adm-usu">
+      <summary>Usuarios y pagos</summary>
+      <div id="us-res" class="note">Cargando…</div>
+      <div class="filters"><label>Buscar <input id="us-q" type="search" placeholder="Correo o nombre"></label>
+        <label>Estado <select id="us-est"><option value="">Todos</option><option value="pagado">Pagado</option><option value="en_prueba">En prueba</option><option value="prueba_terminada">Prueba terminada</option><option value="pago_caducado">Pago caducado</option><option value="registrado">Registrado (sin cobro activo)</option><option value="sin_identificar">Sin identificar</option></select></label></div>
+      <div class="scroll"><table><thead><tr><th>Correo</th><th>Nombre</th><th>Alta</th><th>Estado</th><th>Pagó el</th><th>Válido hasta</th></tr></thead><tbody id="us-rows"></tbody></table></div>
+    </details>
+
+    <details class="panel" id="admin">
+      <summary>Subir PDF</summary>
       <h2>1. Subir PDF de puestos ofertados</h2>
       <p class="note" style="margin:0 0 .5rem">Las plazas que salen a adjudicación (archivos <b>AAMMDD_pue_prov.pdf</b> y después <b>AAMMDD_pue_def.pdf</b>).</p>
       <div class="filters">
@@ -338,7 +347,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
       <h2>Últimas cargas</h2>
       <div class="scroll"><table><thead><tr><th>Archivo</th><th>Tipo</th><th>Cuerpo</th><th>Estado</th><th>Fecha</th></tr></thead><tbody id="ad-rows"></tbody></table></div>
       <p class="note">Nombre del archivo como lo publica la Conselleria (por ejemplo 261022_lis_mae.pdf, 261022_lis_sec.pdf o, para plazas ofertadas, 261027_pue_prov.pdf). Cada 15 minutos se procesan los pendientes; recarga la lista para ver el resultado.</p>
-    </div>
+    </details>
   </main>
 
   <footer>DocentsCV es un proyecto independiente, no vinculado a la Conselleria. Fuente: listados oficiales de adjudicación de inicio de curso. No se muestran nombres de personas. · <a href="privacidad.html" target="_blank" rel="noopener">Privacidad y condiciones</a></footer>
@@ -374,7 +383,7 @@ function show(v) {
   window.scrollTo(0, 0);
   if (v === "consulta") { consultaInit(); if (!$("rows").children.length) load(true); }
   if (v === "apartado") renderApartado();
-  if (v === "admin") { if (!ADMIN) return show("home"); adminLista(); }
+  if (v === "admin") { if (!ADMIN) return show("home"); adminLista(); adminUsuarios(); }
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (b) show(b.dataset.go); });
 
@@ -780,6 +789,21 @@ async function adminLista() {
   $("ad-rows").innerHTML = error ? `<tr><td colspan="5" class="err">${esc(error.message)}</td></tr>`
     : data.map(i => `<tr><td>${esc(i.nombre_original)}</td><td>${esc(i.tipo)}</td><td>${esc(i.cuerpo)}</td><td>${esc(i.estado)}${i.mensaje ? " · " + esc(i.mensaje) : ""}</td><td>${esc(new Date(i.creado).toLocaleString("es-ES"))}</td></tr>`).join("");
 }
+const EST_US = { pagado: "Pagado", en_prueba: "En prueba", prueba_terminada: "Prueba terminada", pago_caducado: "Pago caducado", registrado: "Registrado", sin_identificar: "Sin identificar" };
+let USU = [];
+async function adminUsuarios() {
+  const { data, error } = await sb.rpc("admin_usuarios");
+  if (error) { $("us-res").innerHTML = `<span class="err">${esc(error.message)}</span>`; return; }
+  USU = data || []; const n = e => USU.filter(u => u.estado === e).length;
+  $("us-res").innerHTML = `<b>${USU.length}</b> altas · <b>${n("pagado")}</b> pagado${n("pagado") === 1 ? "" : "s"} · <b>${n("en_prueba")}</b> en prueba · <b>${n("prueba_terminada") + n("pago_caducado")}</b> sin pagar tras la prueba · <b>${n("registrado")}</b> registrados (sin cobro activo) · <b>${n("sin_identificar")}</b> sin identificar`;
+  usuPintar();
+}
+function usuPintar() {
+  const q = $("us-q").value.trim().toLowerCase(), es = $("us-est").value, f = d => d ? new Date(d).toLocaleDateString("es-ES") : "—";
+  const fil = USU.filter(u => (!es || u.estado === es) && (!q || ((u.email || "") + " " + (u.nombre || "")).toLowerCase().includes(q)));
+  $("us-rows").innerHTML = fil.length ? fil.slice(0, 500).map(u => `<tr><td>${esc(u.email)}</td><td>${esc(u.nombre || "—")}</td><td>${f(u.alta)}</td><td>${esc(EST_US[u.estado] || u.estado)}</td><td>${u.estado === "pagado" || u.estado === "pago_caducado" ? f(u.pagado_el) : "—"}</td><td>${u.pagado_hasta ? fmtF(u.pagado_hasta) : "—"}</td></tr>`).join("") : '<tr><td colspan="6">Sin resultados.</td></tr>';
+}
+$("us-q").addEventListener("input", usuPintar); $("us-est").addEventListener("change", usuPintar);
 function subirPdf(tipo, fileId, msgId, cuerpoFn) {
   return async () => {
     const f = $(fileId).files[0], msg = s => { $(msgId).textContent = s; };
