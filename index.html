@@ -250,7 +250,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
 
     <div class="hero hero-of" id="of-hero" hidden></div>
 
-    <details class="panel" id="of-panel" open hidden>
+    <details class="panel" id="of-panel" hidden>
       <summary id="of-sum">Plazas ofertadas</summary>
       <div class="filters">
         <label>Cuerpo <select id="of-cuerpo"></select></label>
@@ -262,7 +262,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
       <div id="of-body"></div>
     </details>
 
-    <details class="panel" id="dc-panel" open hidden>
+    <details class="panel" id="dc-panel" hidden>
       <summary id="dc-sum">Plazas de difícil cobertura</summary>
       <p class="note" style="margin:.2rem 0 .6rem">Son plazas que nadie cogió en la adjudicación continua. Se ofrecen también a personas que no están en la bolsa y a quienes sí están y quieren cogerlas.</p>
       <div class="filters">
@@ -275,7 +275,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
       <div id="dc-body"></div>
     </details>
 
-    <details class="panel" id="ul-panel" open>
+    <details class="panel" id="ul-panel">
       <summary>Últimas adjudicaciones</summary>
       <div class="filters">
         <label>Lista <select id="ul-grupo"><option value="maestros">Maestros</option><option value="otros">Secundaria y otros cuerpos</option></select></label>
@@ -287,7 +287,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
       <button class="btn" id="ul-more" hidden>Ver más</button>
     </details>
 
-    <details class="panel" id="bs-panel" open>
+    <details class="panel" id="bs-panel">
       <summary>Busca por especialidad y centro</summary>
       <p class="note" style="margin:0 0 .6rem">Mira cuál fue la última adjudicación y hasta qué posición se llegó en cada centro.</p>
       <div class="filters">
@@ -343,7 +343,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
   <main id="v-apartado" class="view" hidden>
     <div class="top" style="position:relative"><div class="brand">Docents<b>CV</b></div>
       <button class="who-btn" id="av-btn" aria-label="Menú de usuario" aria-haspopup="true" aria-expanded="false">?</button>
-      <div class="menu" id="menu-us" hidden><div class="em" id="who"></div><button id="ad-go" hidden>Administración</button><button id="logout">Salir</button></div></div>
+      <div class="menu" id="menu-us" hidden><div class="em" id="who"></div><button id="ad-go" hidden>Administración</button><button id="mn-aj">⚙️ Ajustes y avisos</button><button id="mn-del">Eliminar mi cuenta</button><button id="logout">Salir</button></div></div>
     <div class="hola" id="perfil"></div>
     <div id="acc-box"></div>
     <div id="analisis" hidden>
@@ -361,6 +361,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
         <p class="note">Orientativo, no garantiza ni descarta ninguna plaza. «Competidores por delante» son las personas que pidieron alguna de las plazas ofertadas y no la consiguieron («No adjudicat»). Vacante: trabajarás hasta el final del curso en el mismo centro. Sustitución: la plaza es temporal, mientras su titular está de baja.</p></div>
       <div class="panel"><h2>Hasta dónde se llegó otros años</h2><div id="h-body"></div></div>
     </div>
+    <div id="cfg" hidden><div style="text-align:right"><button class="link" id="cfg-x">Cerrar ✕</button></div>
     <details class="panel" id="ajustes" hidden><summary>Ajustes y avisos</summary><div id="ajustes-body" style="margin-top:.6rem"></div></details>
     <details class="panel" id="del-panel"><summary>Eliminar mi cuenta</summary>
       <p class="note" style="margin:.2rem 0 .6rem">Se borrarán de forma definitiva tu cuenta, tu correo, el nombre asociado y tus datos de acceso. No se puede deshacer. Si pagaste el curso, el pago no se devuelve.</p>
@@ -368,6 +369,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
       <button class="btn" id="del-ok" style="background:var(--red-bg);color:var(--red);border:1px solid var(--red)">Eliminar mi cuenta</button></div>
       <p class="note" id="del-msg" role="status"></p>
     </details>
+    </div>
   </main>
 
   <main id="v-admin" class="view" hidden>
@@ -934,6 +936,10 @@ async function adminInit() {
   ADMIN = true; $("ad-go").hidden = false;
 }
 $("ad-go").onclick = () => show("admin");
+function cfgAbrir(id) { $("cfg").hidden = false; ["ajustes", "del-panel"].forEach(x => { $(x).open = (x === id); }); const t = $(id).hidden ? $("del-panel") : $(id); t.open = true; t.scrollIntoView({ behavior: "smooth", block: "start" }); }
+$("mn-aj").onclick = () => cfgAbrir("ajustes");
+$("mn-del").onclick = () => cfgAbrir("del-panel");
+$("cfg-x").onclick = () => { $("cfg").hidden = true; };
 async function adminLista() {
   const { data, error } = await sb.from("importaciones").select("nombre_original,tipo,cuerpo,estado,mensaje,creado").order("creado", { ascending: false }).limit(15);
   $("ad-rows").innerHTML = error ? `<tr><td colspan="5" class="err">${esc(error.message)}</td></tr>`
