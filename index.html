@@ -1000,13 +1000,15 @@ function chart(h, key, lab) {
   const t0 = pts[0].t, t1 = pts[pts.length - 1].t, ys = pts.map(p => p.y), lo = Math.min(...ys), hi = Math.max(...ys);
   const X = t => pl + (t - t0) / ((t1 - t0) || 1) * (W - pl - pr), Y = v => pt + (v - lo) / ((hi - lo) || 1) * (H - pt - pb);
   const line = pts.map((p, i) => (i ? "L" : "M") + X(p.t).toFixed(1) + " " + Y(p.y).toFixed(1)).join(" ");
+  const col = v => { const f = (v - lo) / ((hi - lo) || 1); return f < 0.34 ? "var(--ok)" : f < 0.67 ? "var(--amb)" : "var(--red)"; }, gid = "gr" + key;
   const dots = pts.map(p => {
     const cx = X(p.t), cy = Y(p.y), txt = `${fmtF(p.f)} · ${lab}: ${p.y}`, bw = txt.length * 5.6 + 14, bx = Math.min(Math.max(cx - bw / 2, 2), W - bw - 2), by = cy < 40 ? cy + 12 : cy - 34;
-    return `<g class="pt" tabindex="0"><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="9" fill="transparent"/><circle class="d" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="3.4" fill="${p.e === 1 ? "var(--mark)" : "var(--accent)"}"/><g class="tip" pointer-events="none"><rect x="${bx.toFixed(1)}" y="${by.toFixed(1)}" width="${bw.toFixed(1)}" height="22" rx="5" fill="var(--ink)"/><text x="${(bx + bw / 2).toFixed(1)}" y="${(by + 15).toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="600" fill="var(--paper)">${txt}</text></g></g>`;
+    return `<g class="pt" tabindex="0"><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="9" fill="transparent"/><circle class="d" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="3.4" fill="${col(p.y)}"/><g class="tip" pointer-events="none"><rect x="${bx.toFixed(1)}" y="${by.toFixed(1)}" width="${bw.toFixed(1)}" height="22" rx="5" fill="var(--ink)"/><text x="${(bx + bw / 2).toFixed(1)}" y="${(by + 15).toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="600" fill="var(--paper)">${txt}</text></g></g>`;
   }).join("");
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolución: de ${pts[0].y} el ${fmtF(pts[0].f)} a ${pts[pts.length - 1].y} el ${fmtF(pts[pts.length - 1].f)}" style="width:100%;max-width:34rem;height:auto;display:block;margin:.5rem 0">
     <line x1="${pl}" y1="${H - pb}" x2="${W - pr}" y2="${H - pb}" stroke="var(--line)"/><line x1="${pl}" y1="${pt}" x2="${pl}" y2="${H - pb}" stroke="var(--line)"/>
-    <path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>${dots}
+    <defs><linearGradient id="${gid}" gradientUnits="userSpaceOnUse" x1="0" y1="${pt}" x2="0" y2="${H - pb}"><stop offset="0" stop-color="var(--ok)"/><stop offset="0.5" stop-color="var(--amb)"/><stop offset="1" stop-color="var(--red)"/></linearGradient></defs>
+    <path d="${line}" fill="none" stroke="url(#${gid})" stroke-width="2.4" stroke-linejoin="round"/>${dots}
     <g font-size="10" fill="var(--muted)"><text x="${pl - 4}" y="${pt + 3}" text-anchor="end">${lo}</text><text x="${pl - 4}" y="${H - pb}" text-anchor="end">${hi}</text>
     <text x="${pl}" y="${H - 8}">${fmtF(pts[0].f)}</text><text x="${W - pr}" y="${H - 8}" text-anchor="end">${fmtF(pts[pts.length - 1].f)}</text></g></svg>`;
 }
