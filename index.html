@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>DocentsCV – Adjudicaciones para el profesorado interino</title>
+<meta name="theme-color" content="#0F7B8A">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
@@ -35,6 +39,63 @@ body{margin:0;background:var(--paper);color:var(--ink);font:400 1rem/1.6 var(--b
 @keyframes pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
 @keyframes slide{from{transform:translateX(-100%)}to{transform:translateX(250%)}}
 @media (prefers-reduced-motion:reduce){#splash svg,.bar i{animation:none}}
+/* ---------- modo app: barra inferior, transiciones, esqueletos, bienvenida ---------- */
+body{padding-bottom:calc(4.9rem + env(safe-area-inset-bottom,0px));overscroll-behavior-y:contain}
+.view:not([hidden]){animation:viewIn .3s cubic-bezier(.2,.7,.2,1) both}
+@keyframes viewIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+#tabbar{position:fixed;left:0;right:0;bottom:0;z-index:15;display:flex;justify-content:center;padding:0 .8rem calc(.5rem + env(safe-area-inset-bottom,0px));pointer-events:none}
+#tabbar .in{pointer-events:auto;display:flex;gap:.2rem;width:100%;max-width:30rem;padding:.35rem;background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:1.4rem;box-shadow:0 8px 28px rgba(11,35,60,.18)}
+#tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:.12rem;padding:.45rem .2rem .4rem;border:0;border-radius:1.1rem;background:none;color:var(--muted);font:600 .72rem var(--body);cursor:pointer;transition:background .2s,color .2s,transform .12s}
+#tabbar button svg{width:1.5rem;height:1.5rem;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+#tabbar button.on{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
+#tabbar button:active{transform:scale(.94)}
+.choice,.btn,.panel summary{transition:transform .12s,border-color .2s}
+.choice:active,.btn:active{transform:scale(.98)}
+.skel{position:relative;overflow:hidden;background:var(--line);border-radius:.9rem}
+.skel::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent);transform:translateX(-100%);animation:shim 1.2s infinite}
+@keyframes shim{to{transform:translateX(100%)}}
+.sk-card{height:11rem;margin-bottom:1rem}.sk-hero{height:9.5rem;margin-bottom:1rem;border-radius:1.1rem}
+#ptr{position:fixed;top:calc(.6rem + env(safe-area-inset-top,0px));left:50%;z-index:25;width:2.4rem;height:2.4rem;margin-left:-1.2rem;border-radius:50%;background:var(--surface);border:1px solid var(--line);box-shadow:0 4px 14px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;font-size:1.1rem;opacity:0;transform:translateY(-3rem);pointer-events:none}
+#ptr.go{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:translateY(var(--ty,0)) rotate(360deg)}}
+#onb{position:fixed;inset:0;z-index:30;background:var(--paper);display:flex;flex-direction:column;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+#onb .sl{flex:1;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
+#onb .sl::-webkit-scrollbar{display:none}
+#onb .s{flex:0 0 100%;scroll-snap-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:1.5rem 2rem;gap:1rem}
+#onb .art{width:min(14rem,55vw);aspect-ratio:1;border-radius:2.2rem;display:flex;align-items:center;justify-content:center;font-size:5.2rem;background:linear-gradient(135deg,#0B4F6C,#0F7B8A);box-shadow:0 14px 40px rgba(11,79,108,.35);animation:pop .6s ease-out both}
+#onb .s:nth-child(2) .art{background:linear-gradient(135deg,#B45309,#D97706);box-shadow:0 14px 40px rgba(180,83,9,.3)}
+#onb .s:nth-child(3) .art{background:linear-gradient(135deg,#12804A,#1aa862);box-shadow:0 14px 40px rgba(18,128,74,.3)}
+#onb h2{font:800 clamp(1.7rem,6vw,2.4rem)/1.1 var(--display);letter-spacing:-.03em;margin:.6rem 0 0;max-width:16ch}
+#onb p{color:var(--muted);font-size:1.1rem;max-width:30ch;margin:0}
+#onb .ft{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.5rem 1.4rem;max-width:30rem;width:100%;margin:0 auto}
+#onb .dots{display:flex;gap:.4rem}#onb .dots i{width:.55rem;height:.55rem;border-radius:1rem;background:var(--line);transition:all .25s}#onb .dots i.on{width:1.5rem;background:var(--accent)}
+@media (prefers-reduced-motion:reduce){.view:not([hidden]),#onb .art,.skel::after{animation:none}}
+/* ---------- pulido: inicio y Mi apartado ---------- */
+.home-hero .cta{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1.1rem}
+.home-hero .cta .btn{flex:1 1 9.5rem;font:700 1rem var(--body);padding:.7rem 1rem;text-align:center}
+.btn.big{background:#F6D365;color:#3A2C00;border:0;box-shadow:0 6px 18px rgba(0,0,0,.2)}
+.btn.ghost{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.4)}
+h2.sec{font:700 1.1rem var(--display);margin:.2rem 0 .6rem;color:var(--muted);letter-spacing:.02em;text-transform:uppercase;font-size:.85rem}
+.hoy{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:.7rem;margin:0 0 1.3rem}
+.hoy button{display:flex;align-items:center;gap:.9rem;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:1rem;padding:.8rem 1rem;color:var(--ink);font:inherit;cursor:pointer;transition:transform .12s,border-color .2s}
+.hoy button:active{transform:scale(.98)}.hoy button:hover{border-color:var(--accent)}
+.hoy .n{flex:none;min-width:3.4rem;text-align:center;font:800 1.9rem/1 var(--display);color:var(--accent)}
+.hoy .t b{display:block;font-weight:600}.hoy .t small{color:var(--muted);font-size:.85rem}
+.hoy .o .n{color:#B45309}.hoy .d .n{color:#12804A}
+.who-btn{width:2.4rem;height:2.4rem;border-radius:50%;border:0;background:var(--accent);color:#fff;font:700 1.05rem var(--display);cursor:pointer;display:grid;place-items:center}
+.menu{position:absolute;right:0;top:3rem;z-index:12;min-width:14rem;background:var(--surface);border:1px solid var(--line);border-radius:1rem;box-shadow:0 12px 32px rgba(11,35,60,.22);padding:.4rem;display:flex;flex-direction:column;animation:viewIn .18s both}
+.menu .em{padding:.5rem .7rem;font-size:.85rem;color:var(--muted);word-break:break-all;border-bottom:1px solid var(--line);margin-bottom:.2rem}
+.menu button{text-align:left;padding:.6rem .7rem;border:0;background:none;border-radius:.6rem;font:600 1rem var(--body);color:var(--ink);cursor:pointer}
+.menu button:hover{background:var(--paper)}
+.hola{margin:.2rem 0 1rem}.hola .h{font:800 clamp(1.6rem,6vw,2.2rem)/1.1 var(--display);letter-spacing:-.02em}.hola .nm{color:var(--muted);font-size:.9rem;margin-top:.15rem}
+.hola .tag{margin:.5rem .3rem 0 0}
+.wow{position:relative;overflow:hidden;border-radius:1.2rem;padding:1.1rem 1.1rem 1rem;margin:0 0 1rem;color:#fff;background:radial-gradient(circle at 90% 0%,rgba(246,211,101,.4),transparent 45%),linear-gradient(135deg,#0B4F6C,#0F7B8A);box-shadow:0 8px 26px rgba(11,79,108,.3)}
+.wow.cerca{background:radial-gradient(circle at 90% 0%,rgba(255,255,255,.25),transparent 45%),linear-gradient(135deg,#B45309,#D97706)}
+.wow.lejos{background:linear-gradient(135deg,#334E68,#486581)}
+.wow .k{font:700 .8rem var(--body);letter-spacing:.07em;text-transform:uppercase;opacity:.92}
+.wow .h{font:800 clamp(1.4rem,5.5vw,2rem)/1.12 var(--display);letter-spacing:-.02em;margin:.25rem 0 .7rem}
+.wow .li{display:flex;align-items:center;justify-content:space-between;gap:.7rem;width:100%;text-align:left;background:rgba(255,255,255,.16);border:0;border-radius:.8rem;padding:.6rem .8rem;margin-top:.4rem;color:#fff;font:inherit;cursor:pointer}
+.wow .li:active{transform:scale(.98)}.wow .li b{display:block;font-weight:600}.wow .li small{opacity:.92;font-size:.85rem}.wow .li .go{font-size:1.3rem}
 /* cabecera de pantallas */
 .top{display:flex;justify-content:space-between;align-items:center;padding:1.1rem 0}
 .link{background:none;border:0;color:var(--accent);font:600 1rem var(--body);cursor:pointer;padding:.3rem 0}
@@ -170,11 +231,10 @@ details.panel[open]>summary{margin-bottom:.8rem}
       <h1>Descubre tus <em>opciones reales</em> de conseguir plaza</h1>
       <p>Las últimas adjudicaciones al instante, tu posición en la bolsa y la probabilidad de que te toque.</p>
       <div class="g" id="home-stats"><div><b>—</b><small>plazas en la última tanda</small></div><div><b>—</b><small>fecha de la última tanda</small></div></div>
+      <div class="cta"><button class="btn big" data-go="apartado">🎯 Ver mi posición</button><button class="btn ghost" data-go="consulta">Consultar adjudicaciones</button></div>
     </section>
-    <div class="choices">
-      <button class="choice" data-go="consulta"><div class="ic">🔎</div><strong>Consulta</strong><span>Últimas adjudicaciones y hasta qué posición se llega por especialidad y centro. Sin registro.</span><div class="go">Entrar →</div></button>
-      <button class="choice main" data-go="apartado"><span class="tag">Lo más útil</span><div class="ic">🎯</div><strong>Mi apartado</strong><span>Tu posición, cómo evoluciona, quién va por delante y tu <b>probabilidad de conseguir plaza</b>.</span><div class="go">Entrar →</div></button>
-    </div>
+    <h2 class="sec">Hoy en las listas</h2>
+    <div class="hoy" id="home-hoy"><div class="skel" style="height:4.6rem"></div><div class="skel" style="height:4.6rem"></div><div class="skel" style="height:4.6rem"></div></div>
     <div class="feat">
       <div><i>⚡</i><p style="margin:0"><b>Siempre al día</b><span>Se actualiza con cada lista de la Conselleria.</span></p></div>
       <div><i>📈</i><p style="margin:0"><b>Tu evolución</b><span>Gráficas de tu puesto en los últimos 2 meses.</span></p></div>
@@ -184,9 +244,9 @@ details.panel[open]>summary{margin-bottom:.8rem}
 
   <!-- CONSULTA -->
   <main id="v-consulta" class="view" hidden>
-    <div class="top"><div class="brand">Docents<b>CV</b></div><button class="link" data-go="home">← Inicio</button></div>
+    <div class="top"><div class="brand">Docents<b>CV</b></div></div>
     <h1>Consulta</h1>
-    <div class="hero" id="hero"><div class="k">Adjudicaciones continuas</div><div class="h">Cargando las últimas adjudicaciones…</div></div>
+    <div class="hero" id="hero"><div class="skel sk-hero" style="background:rgba(255,255,255,.18)"></div></div>
 
     <div class="hero hero-of" id="of-hero" hidden></div>
 
@@ -265,7 +325,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
 
   <!-- ACCESO -->
   <main id="v-auth" class="view" hidden>
-    <div class="top"><div class="brand">Docents<b>CV</b></div><button class="link" data-go="home">← Inicio</button></div>
+    <div class="top"><div class="brand">Docents<b>CV</b></div></div>
     <h1 id="au-title">Entrar</h1>
     <div class="panel" style="max-width:26rem">
       <div style="display:flex;flex-direction:column;gap:.75rem">
@@ -281,12 +341,14 @@ details.panel[open]>summary{margin-bottom:.8rem}
 
   <!-- MI APARTADO -->
   <main id="v-apartado" class="view" hidden>
-    <div class="top"><div class="brand">Docents<b>CV</b></div><div><span class="note" id="who"></span> <button class="link" id="ad-go" hidden>Administración</button> <button class="link" id="logout">Salir</button> · <button class="link" data-go="home">← Inicio</button></div></div>
-    <h1>Mi apartado</h1>
-    <div class="panel" id="perfil"></div>
+    <div class="top" style="position:relative"><div class="brand">Docents<b>CV</b></div>
+      <button class="who-btn" id="av-btn" aria-label="Menú de usuario" aria-haspopup="true" aria-expanded="false">?</button>
+      <div class="menu" id="menu-us" hidden><div class="em" id="who"></div><button id="ad-go" hidden>Administración</button><button id="logout">Salir</button></div></div>
+    <div class="hola" id="perfil"></div>
     <div id="acc-box"></div>
     <div id="analisis" hidden>
       <p class="note" id="s-aviso" style="margin:0 0 .6rem"></p>
+      <div id="wow" hidden></div>
       <div id="s-cards"></div>
       <div class="panel" id="dc-mi" hidden><h2>Plazas de difícil cobertura en tus bolsas</h2><div id="dc-mi-body"></div></div>
       <div class="panel" id="oport-panel"><h2>Tus oportunidades por centro</h2>
@@ -299,6 +361,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
         <p class="note">Orientativo, no garantiza ni descarta ninguna plaza. «Competidores por delante» son las personas que pidieron alguna de las plazas ofertadas y no la consiguieron («No adjudicat»). Vacante: trabajarás hasta el final del curso en el mismo centro. Sustitución: la plaza es temporal, mientras su titular está de baja.</p></div>
       <div class="panel"><h2>Hasta dónde se llegó otros años</h2><div id="h-body"></div></div>
     </div>
+    <details class="panel" id="ajustes" hidden><summary>Ajustes y avisos</summary><div id="ajustes-body" style="margin-top:.6rem"></div></details>
     <details class="panel" id="del-panel"><summary>Eliminar mi cuenta</summary>
       <p class="note" style="margin:.2rem 0 .6rem">Se borrarán de forma definitiva tu cuenta, tu correo, el nombre asociado y tus datos de acceso. No se puede deshacer. Si pagaste el curso, el pago no se devuelve.</p>
       <div class="filters"><label>Escribe ELIMINAR para confirmar <input id="del-txt" type="text" autocomplete="off"></label>
@@ -308,7 +371,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
   </main>
 
   <main id="v-admin" class="view" hidden>
-    <div class="top"><div class="brand">Docents<b>CV</b></div><div><button class="link" data-go="apartado">← Mi apartado</button> · <button class="link" data-go="home">Inicio</button></div></div>
+    <div class="top"><div class="brand">Docents<b>CV</b></div><div><button class="link" data-go="apartado">← Mi apartado</button></div></div>
     <h1>Administración</h1>
     <details class="panel" id="adm-usu">
       <summary>Usuarios y pagos</summary>
@@ -353,6 +416,20 @@ details.panel[open]>summary{margin-bottom:.8rem}
   <footer>DocentsCV es un proyecto independiente, no vinculado a la Conselleria. Fuente: listados oficiales de adjudicación de inicio de curso. No se muestran nombres de personas. · <a href="privacidad.html" target="_blank" rel="noopener">Privacidad y condiciones</a></footer>
 </div>
 
+<nav id="tabbar" aria-label="Navegación principal" hidden><div class="in">
+  <button data-go="home" data-tab="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Inicio</span></button>
+  <button data-go="consulta" data-tab="consulta"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg><span>Consulta</span></button>
+  <button data-go="apartado" data-tab="apartado"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4.5 20c.8-3.6 3.8-5.5 7.5-5.5s6.7 1.9 7.5 5.5"/></svg><span>Mi apartado</span></button>
+</div></nav>
+<div id="ptr" aria-hidden="true">↻</div>
+<div id="onb" role="dialog" aria-label="Bienvenida a DocentsCV" hidden>
+  <div class="sl" id="onb-sl">
+    <div class="s"><div class="art">🎯</div><h2>Tu posición, al instante</h2><p>Mira en qué puesto estás en cada bolsa y cómo ha evolucionado en los últimos 2 meses.</p></div>
+    <div class="s"><div class="art">📈</div><h2>Tus oportunidades reales</h2><p>Descubre si habrías ido por delante de quien se llevó cada plaza y tu probabilidad de conseguirla.</p></div>
+    <div class="s"><div class="art">⚡</div><h2>Siempre al día</h2><p>Cada lista de la Conselleria se carga en cuanto sale: adjudicaciones, plazas ofertadas y de difícil cobertura.</p></div>
+  </div>
+  <div class="ft"><button class="link" id="onb-skip">Saltar</button><div class="dots" id="onb-dots"><i class="on"></i><i></i><i></i></div><button class="btn" id="onb-next">Siguiente</button></div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 // ====== CONEXIÓN SUPABASE ======
@@ -381,12 +458,80 @@ const getJ = async p => (await api(p)).json();
 function show(v) {
   document.querySelectorAll(".view").forEach(s => s.hidden = s.id !== "v-" + v);
   window.scrollTo(0, 0);
+  const tb = $("tabbar"); tb.hidden = false;
+  const tab = v === "consulta" ? "consulta" : v === "home" ? "home" : "apartado";
+  tb.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
   if (v === "consulta") { consultaInit(); if (!$("rows").children.length) load(true); }
   if (v === "apartado") renderApartado();
   if (v === "admin") { if (!ADMIN) return show("home"); adminLista(); adminUsuarios(); }
 }
-document.addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (b) show(b.dataset.go); });
+document.addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (b) { try { navigator.vibrate && navigator.vibrate(8); } catch (_) {} show(b.dataset.go); } });
 
+/* ---------- bienvenida (solo la primera vez) y «tirar para actualizar» ---------- */
+function onbInit() {
+  let visto = null; try { visto = localStorage.getItem("dcv_onb"); } catch (_) {}
+  if (visto) return;
+  const sl = $("onb-sl"), dots = [...$("onb-dots").children], n = dots.length; $("onb").hidden = false;
+  const idx = () => Math.round(sl.scrollLeft / sl.clientWidth);
+  const fin = () => { $("onb").hidden = true; try { localStorage.setItem("dcv_onb", "1"); } catch (_) {} };
+  sl.addEventListener("scroll", () => { const i = idx(); dots.forEach((d, k) => d.classList.toggle("on", k === i)); $("onb-next").textContent = i === n - 1 ? "Empezar" : "Siguiente"; });
+  $("onb-next").onclick = () => { const i = idx(); if (i >= n - 1) fin(); else sl.scrollTo({ left: (i + 1) * sl.clientWidth, behavior: "smooth" }); };
+  $("onb-skip").onclick = fin;
+}
+(function () {
+  const app = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone;
+  if (!app) return;                                   // solo dentro de la app instalada
+  let y0 = null, d = 0; const p = $("ptr");
+  addEventListener("touchstart", e => { y0 = window.scrollY <= 0 && e.touches.length === 1 ? e.touches[0].clientY : null; d = 0; }, { passive: true });
+  addEventListener("touchmove", e => { if (y0 === null) return; d = Math.max(0, e.touches[0].clientY - y0); const t = Math.min(d, 110) * .6; p.style.setProperty("--ty", t + "px"); p.style.opacity = Math.min(1, d / 80); p.style.transform = `translateY(${t}px) rotate(${d * 3}deg)`; }, { passive: true });
+  addEventListener("touchend", () => { if (y0 === null) return; if (d > 90) { p.classList.add("go"); p.style.opacity = 1; setTimeout(() => location.reload(), 250); } else { p.style.opacity = 0; p.style.transform = ""; } y0 = null; });
+})();
+/* menú de usuario */
+(function () {
+  const b = $("av-btn"), m = $("menu-us");
+  const cerrar = () => { m.hidden = true; b.setAttribute("aria-expanded", "false"); };
+  b.onclick = e => { e.stopPropagation(); m.hidden = !m.hidden; b.setAttribute("aria-expanded", String(!m.hidden)); };
+  document.addEventListener("click", e => { if (!m.hidden && !m.contains(e.target)) cerrar(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") cerrar(); });
+  m.addEventListener("click", cerrar);
+})();
+/* Inicio: «Hoy en las listas» */
+async function homeHoy() {
+  const [o, d] = await Promise.all([cargarOfertas(), cargarDif()]);
+  const ult = ultFechaContinua(), t = [];
+  const m = (INST || []).filter(i => i.tipo === "continua" && i.fecha === ult);
+  if (o.fecha) t.push(`<button class="o" data-go="consulta"><div class="n">${o.rows.length}</div><div class="t"><b>Plazas ofertadas</b><small>${ofertaVigente() ? "Próxima adjudicación" : "Adjudicación"} · ${fmtF(o.fecha)}</small></div></button>`);
+  if (d.fecha) t.push(`<button class="d" data-go="consulta"><div class="n">${d.rows.length}</div><div class="t"><b>Difícil cobertura</b><small>Publicadas el ${fmtF(d.fecha)}</small></div></button>`);
+  $("home-hoy").innerHTML = t.length ? t.join("") : '<p class="note" style="margin:0">Aún no hay plazas ofertadas publicadas.</p>';
+}
+/* ---------- notificaciones push (solo si la persona las activa en este dispositivo) ---------- */
+const b64u = b => { const p = "=".repeat((4 - b.length % 4) % 4), r = atob((b + p).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from([...r].map(c => c.charCodeAt(0))); };
+async function pushInit() {
+  const txt = $("push-txt"), btn = $("push-btn"); if (!txt) return;
+  const ok = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  if (!ok) { txt.textContent = /iPhone|iPad/i.test(navigator.userAgent) ? "En iPhone, añade primero la web a tu pantalla de inicio (Compartir → «Añadir a pantalla de inicio») y ábrela desde allí." : "Este navegador no admite notificaciones."; return; }
+  if (Notification.permission === "denied") { txt.textContent = "Las notificaciones están bloqueadas en este navegador. Permítelas en los ajustes del sitio para poder activarlas."; return; }
+  let reg, sub = null, activo = false;
+  try { reg = await navigator.serviceWorker.ready; sub = await reg.pushManager.getSubscription(); if (sub) activo = !!(await sb.rpc("push_activo", { p_endpoint: sub.endpoint })).data; } catch (e) { txt.textContent = "No se pudo comprobar el estado de las notificaciones."; return; }
+  const pintar = () => { txt.textContent = activo ? "Activadas: te avisaremos en este dispositivo cuando se publiquen plazas ofertadas en tus bolsas." : "Recibe un aviso en este dispositivo cuando se publiquen plazas ofertadas en tus bolsas. Es opcional y puedes desactivarlo cuando quieras."; btn.textContent = activo ? "Desactivar notificaciones" : "Activar notificaciones"; btn.hidden = false; };
+  pintar();
+  btn.onclick = async () => {
+    btn.disabled = true;
+    try {
+      if (activo) {
+        const s = await reg.pushManager.getSubscription(); if (s) { await sb.rpc("quitar_push", { p_endpoint: s.endpoint }); await s.unsubscribe(); } activo = false;
+      } else {
+        if ((await Notification.requestPermission()) !== "granted") { txt.textContent = "No has dado permiso. Puedes volver a intentarlo cuando quieras."; btn.disabled = false; return; }
+        const k = (await sb.rpc("vapid_publica")).data; if (!k) { txt.textContent = "Las notificaciones aún no están disponibles. Inténtalo más tarde."; btn.disabled = false; return; }
+        const s = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(k) }), j = s.toJSON();
+        const r = await sb.rpc("guardar_push", { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth }); if (r.error || !r.data) throw new Error("no guardado");
+        activo = true;
+      }
+      pintar();
+    } catch (e) { txt.textContent = "No se pudo completar: " + (e && e.message ? e.message : "error"); }
+    btn.disabled = false;
+  };
+}
 /* ---------- arranque ---------- */
 async function init() {
   if (SUPABASE_URL.startsWith("PEGA") || SUPABASE_KEY.startsWith("PEGA")) { $("cfgerr").hidden = false; return; }
@@ -405,7 +550,7 @@ function fillConsulta() {
 }
 const t0 = Date.now();
 initAuth();
-init().finally(() => setTimeout(() => { consultaInit(); READY = true; if (RECOVERY) { show("auth"); authMode("nueva"); } else show("home"); $("splash").classList.add("out"); }, Math.max(0, 1300 - (Date.now() - t0))));
+init().finally(() => setTimeout(() => { consultaInit(); READY = true; if (RECOVERY) { show("auth"); authMode("nueva"); } else { show("home"); onbInit(); } $("splash").classList.add("out"); }, Math.max(0, 1300 - (Date.now() - t0))));
 
 /* ---------- estimación común ---------- */
 async function estimateHTML(cuerpo, esp, my) {
@@ -478,7 +623,7 @@ async function consultaInit() {
     $("hero").innerHTML = `<div class="k">Adjudicaciones continuas</div><div class="h">Última tanda: ${fmtF(ult)}</div>
       <div class="g"><div><b>${enUlt(m) + enUlt(o)}</b><small>plazas adjudicadas en la última tanda</small></div><div><b>${m.rows.length}</b><small>Maestros (última lista, ${m.ins ? fmtF(m.ins.fecha) : "—"})</small></div><div><b>${o.rows.length}</b><small>Secundaria y otros (última lista, ${o.ins ? fmtF(o.ins.fecha) : "—"})</small></div><div><b>${tandasN}</b><small>fechas con adjudicaciones este curso</small></div></div>`;
     $("home-stats").innerHTML = `<div><b>${enUlt(m) + enUlt(o)}</b><small>plazas adjudicadas en la última tanda</small></div><div><b>${fmtF(ult).slice(0, 5)}</b><small>última tanda (${fmtF(ult).slice(6)})</small></div><div><b>${tandasN}</b><small>fechas con adjudicaciones este curso</small></div>`;
-    ultimas(); ofertasInit(); difInit();
+    ultimas(); ofertasInit(); difInit(); homeHoy();
   } catch (e) { $("hero").innerHTML = `<div class="h">No se pudieron cargar las adjudicaciones</div><div>${esc(e.message)}</div>`; }
 }
 async function ultimas() {
@@ -722,12 +867,13 @@ async function renderApartado() {
   if (!sb) { show("auth"); authMode("login"); $("au-msg").textContent = "No se pudo cargar el sistema de cuentas. Recarga la página."; return; }
   const { data: { session } } = await sb.auth.getSession();
   if (!session) { show("auth"); authMode("login"); return; }
-  USER = session.user; $("who").textContent = USER.email;
+  USER = session.user; $("who").textContent = USER.email; $("av-btn").textContent = (USER.email || "?")[0].toUpperCase();
+  if (!$("s-cards").children.length) $("s-cards").innerHTML = '<div class="skel sk-card"></div><div class="skel sk-card"></div>';
   await adminInit();
   let idn = null;
   try { idn = (await sb.rpc("mi_nombre")).data; } catch (e) {}
   if (!idn) {
-    $("analisis").hidden = true; $("acc-box").innerHTML = "";
+    $("analisis").hidden = true; $("acc-box").innerHTML = ""; $("ajustes").hidden = true; $("perfil").innerHTML = "";
     $("perfil").innerHTML = `<h2>Identifícate</h2><p style="margin:0 0 .75rem">Escribe tu nombre exactamente como sale en las listas oficiales: apellidos, una coma y el nombre. <strong>No se podrá cambiar después.</strong></p>
       <div class="filters"><label>Tu nombre <input id="n-nom" type="text" autocomplete="off" placeholder="APELLIDO1 APELLIDO2, NOMBRE" style="min-width:min(22rem,80vw)"></label><button class="btn" id="n-ok">Confirmar</button></div>
       <label class="chk"><input type="checkbox" id="n-av"><span>Quiero recibir por email un aviso cuando salgan plazas ofertadas en mis bolsas (opcional; puedes cambiarlo cuando quieras).</span></label><p class="note" id="n-msg" role="status"></p>`;
@@ -747,17 +893,21 @@ async function renderApartado() {
   let espMia = [];
   try { espMia = ((await sb.from("perfiles").select("esp_maestros").eq("id", USER.id).maybeSingle()).data || {}).esp_maestros || []; } catch (e) {}
   const espTxt = espMia.map(c => { const e = ESPU.find(x => x.codigo === c); return `<span class="tag" style="margin:.15rem .25rem 0 0">${esc(c)} · ${esc(e ? e.nombre : "")}</span>`; }).join("");
-  $("perfil").innerHTML = `<div class="note" style="margin:0">Tu nombre en las listas</div><div class="big" style="font-size:1.6rem">${esc(idn)}</div>${espTxt ? `<div class="note" style="margin:.5rem 0 0">Tus especialidades de Maestros</div><div>${espTxt}</div>` : ""}<p class="note">Si hay un error en tu nombre o especialidades, escríbenos para corregirlo.</p>
-    <label class="chk"><input type="checkbox" id="av-chk" disabled><span>Avisarme por email cuando salgan plazas ofertadas en mis bolsas</span></label><p class="note" id="av-msg" role="status" style="margin:.2rem 0 0"></p>`
+  const pn = (idn.split(",")[1] || idn).trim().toLowerCase().replace(/(^|\s)\S/g, c => c.toUpperCase());
+  $("perfil").innerHTML = `<div class="h">Hola, ${esc(pn)} 👋</div><div class="nm">${esc(idn)}</div>${espTxt ? `<div>${espTxt}</div>` : ""}`;
+  $("ajustes").hidden = false;
+  $("ajustes-body").innerHTML = `<p class="note" style="margin:0 0 .4rem">Si hay un error en tu nombre o especialidades, escríbenos para corregirlo.</p>
+    <label class="chk"><input type="checkbox" id="av-chk" disabled><span>Avisarme por email cuando salgan plazas ofertadas en mis bolsas</span></label><p class="note" id="av-msg" role="status" style="margin:.2rem 0 0"></p>
+    <div class="panel" id="push-box" style="margin:.8rem 0 0"><b>🔔 Avisos en este dispositivo</b><p class="note" id="push-txt" style="margin:.3rem 0 .5rem">Comprobando…</p><button class="btn" id="push-btn" hidden>Activar notificaciones</button></div>`
     + (ADMIN ? `<button class="btn" id="adesp" style="margin-top:.4rem">Administrador: cambiar mis especialidades</button>` : "")
     + (ADMIN ? `<details style="margin-top:.6rem"><summary class="note" style="cursor:pointer">Administrador: ver la web como otra persona</summary>
       <div class="filters" style="margin-top:.5rem"><label>Nombre en las listas <input id="adn-nom" type="text" autocomplete="off" placeholder="APELLIDO1 APELLIDO2, NOMBRE" style="min-width:min(22rem,80vw)"></label><button class="btn" id="adn-ok">Cambiar</button></div>
-      <p class="note" style="margin:.6rem 0 .2rem">Ver cómo lo ve un usuario con el cobro activado:</p><div class="filters"><button class="btn" id="sim-p">Prueba (5 días)</button><button class="btn" id="sim-f">Prueba terminada</button><button class="btn" id="sim-n">Quitar simulación</button></div><p class="note" id="adn-msg" role="status"></p></details>` : "");
-  try {
+      <p class="note" style="margin:.6rem 0 .2rem">Ver cómo lo ve un usuario con el cobro activado:</p><div class="filters"><button class="btn" id="sim-p">Prueba (5 días)</button><button class="btn" id="sim-f">Prueba terminada</button><button class="btn" id="sim-n">Quitar simulación</button></div><p class="note" id="adn-msg" role="status"></p></details>` : "");  try {
     const pf = (await sb.from("perfiles").select("avisos").eq("id", USER.id).maybeSingle()).data;
     const chk = $("av-chk"); chk.checked = !!(pf && pf.avisos === true); chk.disabled = false;
     chk.onchange = async () => { const { error } = await sb.from("perfiles").upsert({ id: USER.id, avisos: chk.checked }); $("av-msg").textContent = error ? "No se pudo guardar: " + error.message : (chk.checked ? "Avisos activados." : "Avisos desactivados."); };
   } catch (e) {}
+  pushInit();
   if (ADMIN && $("adesp")) $("adesp").onclick = () => pedirEsp(true);
   if (ADMIN) { $("sim-p").onclick = () => { SIM = "prueba"; renderApartado(); }; $("sim-f").onclick = () => { SIM = "fin"; renderApartado(); }; $("sim-n").onclick = () => { SIM = null; renderApartado(); }; }
   if (ADMIN) $("adn-ok").onclick = async () => {
@@ -926,6 +1076,7 @@ async function oportunidades(pan, espMia) {
     html += `<label>Centro<select data-lista="${r.lista_id}" style="max-width:100%"><option value="">Elige un centro…</option>${optO ? `<optgroup label="📣 Se ofertan en la próxima adjudicación (${fmtF(OFER.fecha)})">${optO}</optgroup>` : ""}<optgroup label="Última tanda con plazas (${fmtF(ultima)})">${opt(true)}</optgroup><optgroup label="Tandas anteriores">${opt(false)}</optgroup></select></label><div id="op-res-${r.lista_id}" style="margin-top:.6rem"></div></div>`;
   });
   $("oport-body").innerHTML = html;
+  wowPintar(pan, espMia, por);
   $("oport-body").querySelectorAll("select").forEach(sel => sel.onchange = () => {
     const out = $("op-res-" + sel.dataset.lista), rows = (por[sel.dataset.lista] || []).filter(o => o.centro_codigo === sel.value);
     const esMae = (pan.find(x => String(x.lista_id) === sel.dataset.lista) || {}).cuerpo === "maestros";
@@ -955,6 +1106,47 @@ async function oportunidades(pan, espMia) {
         const res = o.mi_posicion == null ? "Sin dato" : o.mi_posicion < o.posicion_adj ? `<span class="tag">Ibas por delante</span> (${o.posicion_adj - o.mi_posicion} puestos)` : o.mi_posicion === o.posicion_adj ? "Eras tú" : `Iba por delante de ti (${o.mi_posicion - o.posicion_adj} puestos)`;
         return `<tr><td>${fmtF(o.fecha)}</td><td>${o.plaza_tipo === "vacante" ? "Vacante" : "Sustitución"}${o.especialidad_codigo && esMae ? " · esp. " + esc(o.especialidad_codigo) : ""}</td><td class="n">${o.posicion_adj}</td><td class="n">${o.mi_posicion ?? "—"}</td><td>${res}</td></tr>`;
       }).join("")}</tbody></table></div>`);
+  });
+}
+
+function wowPintar(pan, espMia, por) {
+  const box = $("wow"); box.hidden = true; box.className = "wow";
+  if (!ofertaVigente()) return;
+  const C = [];
+  pan.forEach(r => {
+    const ofe = OFER.rows.filter(o => r.cuerpo === "maestros" ? (o.cuerpo === "maestros" && (espMia || []).includes(o.especialidad_codigo)) : (o.cuerpo === r.cuerpo && o.especialidad_codigo === r.bolsa));
+    if (!ofe.length) return;
+    const cen = new Map(); ofe.forEach(o => { const c = cen.get(o.centro_codigo) || { n: o.centro || o.centro_codigo, l: o.localidad || "", k: 0, esp: new Set() }; c.k++; c.esp.add(o.especialidad_codigo); cen.set(o.centro_codigo, c); });
+    const hist = por[r.lista_id] || [];
+    const ref = hist.filter(o => r.cuerpo !== "maestros" || ofe.some(x => x.especialidad_codigo === o.especialidad_codigo));
+    const f0 = ref.map(o => o.fecha).sort().pop(), top = f0 ? Math.max(...ref.filter(o => o.fecha === f0).map(o => o.posicion_adj)) : null;
+    cen.forEach((c, cod) => {
+      const rows = hist.filter(o => o.centro_codigo === cod && o.mi_posicion != null), N = rows.length, K = rows.filter(o => o.mi_posicion < o.posicion_adj).length;
+      const it = { r, cod, c };
+      if (N && K > 0) Object.assign(it, { tipo: "real", score: 3 + K / N, txt: `Ibas por delante en ${K} de ${N} adjudicaci${N === 1 ? 'ón' : 'ones'} de este centro` });
+      else if (top != null) {
+        const gap = r.posicion - top;
+        if (gap <= 0) Object.assign(it, { tipo: "real", score: 2.5, txt: `Dentro del alcance: en la última tanda se llegó hasta la posición ${top} y tú estás en la ${r.posicion}` });
+        else if (gap / r.posicion < 0.15) Object.assign(it, { tipo: "cerca", score: 1 + 1 / gap, txt: `A ${gap} puestos de la última persona adjudicada en tu bolsa` });
+        else Object.assign(it, { tipo: "lejos", score: 0, txt: `Todavía lejos por ahora (${gap} puestos)` });
+      } else Object.assign(it, { tipo: "lejos", score: 0, txt: "Plaza ofertada en tu bolsa" });
+      C.push(it);
+    });
+  });
+  if (!C.length) return;
+  C.sort((a, b) => b.score - a.score);
+  const reales = C.filter(x => x.tipo === "real"), cercas = C.filter(x => x.tipo === "cerca");
+  const np = L => L.reduce((s, x) => s + x.c.k, 0), pl = n => n + " plaza" + (n === 1 ? "" : "s");
+  let k, h, cls = "";
+  if (reales.length) { k = "🎯 Tu mejor oportunidad ahora"; h = `Tienes opción real en ${pl(np(reales))} de la próxima adjudicación`; }
+  else if (cercas.length) { k = "🔥 Estás muy cerca"; h = `Estás muy cerca en ${pl(np(cercas))} que se ofertan el ${fmtF(OFER.fecha)}`; cls = " cerca"; }
+  else { k = "📣 Plazas ofertadas en tus bolsas"; h = `Se ofertan ${pl(np(C))} en tus bolsas el ${fmtF(OFER.fecha)}`; cls = " lejos"; }
+  box.className = "wow" + cls;
+  box.innerHTML = `<div class="k">${k}</div><div class="h">${esc(h)}</div>` + C.slice(0, 3).map((x, i) => `<button class="li" data-i="${i}"><span><b>${esc(x.c.l)} · ${esc(x.c.n)}${x.c.k > 1 ? " (" + x.c.k + " plazas)" : ""}</b><small>${esc(x.txt)}</small></span><span class="go">›</span></button>`).join("") + '<small style="display:block;margin-top:.6rem;opacity:.85">Orientativo: se basa en quién se llevó plazas de estos centros en tandas anteriores. No garantiza ninguna plaza.</small>';
+  box.hidden = false;
+  box.querySelectorAll(".li").forEach(b => b.onclick = () => {
+    const x = C[+b.dataset.i], sel = $("oport-body").querySelector(`select[data-lista="${x.r.lista_id}"]`); if (!sel) return;
+    sel.value = x.cod; sel.dispatchEvent(new Event("change")); $("oport-panel").scrollIntoView({ behavior: "smooth", block: "start" });
   });
 }
 
@@ -1039,5 +1231,7 @@ async function situacion() {
   } catch (e) { $("h-body").innerHTML = ""; }
 }
 </script>
+<script>if ("serviceWorker" in navigator) addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });</script>
+
 </body>
 </html>
