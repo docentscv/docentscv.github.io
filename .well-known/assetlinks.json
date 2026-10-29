@@ -1,1 +1,12 @@
-
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.docentscv.app",
+      "sha256_cert_fingerprints": [
+        "0F:CA:8A:35:D2:57:BE:BE:7F:89:FA:E5:C2:37:08:9F:E9:27:AD:0F:25:04:34:F2:41:A5:21:B4:73:7F:A6:24"
+      ]
+    }
+  }
+]
