@@ -968,10 +968,13 @@ async function refInit() {
   const txt = `Estoy usando DocentsCV para seguir las adjudicaciones de interinos de la Comunitat Valenciana. Entra en https://docentscv.github.io/, crea tu cuenta y pon mi código de invitación: ${data.codigo}`;
   body.innerHTML = `<div style="font:800 1.4rem var(--display);letter-spacing:.04em;margin:.2rem 0">${esc(data.codigo)}</div>
     <p style="margin:.2rem 0 .5rem">Invitados: <b>${data.invitados}</b> · han pagado: <b>${data.pagados} de ${data.necesarios}</b>${data.gratis ? " · 🎉 ¡Conseguido! Tienes la app gratis este curso." : ""}</p>
-    <div class="filters"><button class="btn" id="ref-share">Compartir mi código</button><button class="link" id="ref-copy">Copiar</button></div>
+    <div class="filters"><a class="btn" id="ref-wa" target="_blank" rel="noopener" style="text-decoration:none;background:#1f9d55">WhatsApp</a><a class="btn" id="ref-tg" target="_blank" rel="noopener" style="text-decoration:none;background:#2a8fd4">Telegram</a><button class="btn" id="ref-share" hidden>Otras apps…</button><button class="link" id="ref-copy">Copiar mensaje</button></div>
     ${data.usado ? "" : '<div class="filters" style="margin-top:.6rem"><label>¿Te invitó alguien? Su código <input id="ref-in" type="text" placeholder="DCV-XXXXX" maxlength="12" style="text-transform:uppercase;width:9rem"></label><button class="btn" id="ref-use">Usar código</button></div>'}`;
-  $("ref-share").onclick = async () => { try { if (navigator.share) { await navigator.share({ text: txt }); return; } } catch (e) { return; } try { await navigator.clipboard.writeText(txt); $("ref-msg").textContent = "Mensaje copiado: pégalo en WhatsApp o donde quieras."; } catch (e) { $("ref-msg").textContent = txt; } };
-  $("ref-copy").onclick = async () => { try { await navigator.clipboard.writeText(data.codigo); $("ref-msg").textContent = "Código copiado."; } catch (e) { $("ref-msg").textContent = "Tu código: " + data.codigo; } };
+  const web = "https://docentscv.github.io/";
+  $("ref-wa").href = "https://wa.me/?text=" + encodeURIComponent(txt);
+  $("ref-tg").href = "https://t.me/share/url?url=" + encodeURIComponent(web) + "&text=" + encodeURIComponent(txt.replace(web, "").replace(/\s+/g, " ").trim());
+  if (navigator.share) { $("ref-share").hidden = false; $("ref-share").onclick = async () => { try { await navigator.share({ text: txt }); } catch (e) {} }; }
+  $("ref-copy").onclick = async () => { try { await navigator.clipboard.writeText(txt); $("ref-msg").textContent = "Mensaje copiado: pégalo donde quieras."; } catch (e) { $("ref-msg").textContent = txt; } };
   if ($("ref-use")) $("ref-use").onclick = async () => {
     const { data: r } = await sb.rpc("usar_codigo", { p_codigo: $("ref-in").value });
     $("ref-msg").textContent = r === "ok" ? "¡Código aplicado! Gracias." : (REF_ERR[r] || "No se pudo aplicar el código."); if (r === "ok") refInit();
