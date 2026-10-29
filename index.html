@@ -434,7 +434,9 @@ details.panel[open]>summary{margin-bottom:.8rem}
       <p class="note" id="da-msg" role="status" style="margin:0 0 1rem"></p>
 
       <h2>Últimas cargas</h2>
+      <div id="ad-estado" class="note" style="margin:0 0 .8rem"></div>
       <div class="scroll"><table><thead><tr><th>Archivo</th><th>Tipo</th><th>Cuerpo</th><th>Estado</th><th>Fecha</th></tr></thead><tbody id="ad-rows"></tbody></table></div>
+      <p style="margin:.6rem 0"><button class="btn" id="ad-mas" hidden>Cargar más subidas</button></p>
       <p class="note">Nombre del archivo como lo publica la Conselleria (por ejemplo 261022_lis_mae.pdf, 261022_lis_sec.pdf o, para plazas ofertadas, 261027_pue_prov.pdf). Cada 15 minutos se procesan los pendientes; recarga la lista para ver el resultado.</p>
     </details>
   </main>
@@ -1095,10 +1097,22 @@ function cfgAbrir(id) { $("cfg").hidden = false; ["ajustes", "del-panel"].forEac
 $("mn-aj").onclick = () => cfgAbrir("ajustes");
 $("mn-del").onclick = () => cfgAbrir("del-panel");
 $("cfg-x").onclick = () => { $("cfg").hidden = true; };
+let AD_N = 10;
 async function adminLista() {
-  const { data, error } = await sb.from("importaciones").select("nombre_original,tipo,cuerpo,estado,mensaje,creado").order("creado", { ascending: false }).limit(15);
+  const { data, error } = await sb.from("importaciones").select("nombre_original,tipo,cuerpo,estado,mensaje,creado").order("creado", { ascending: false }).limit(AD_N);
   $("ad-rows").innerHTML = error ? `<tr><td colspan="5" class="err">${esc(error.message)}</td></tr>`
     : data.map(i => `<tr><td>${esc(i.nombre_original)}</td><td>${esc(i.tipo)}</td><td>${esc(i.cuerpo)}</td><td>${esc(i.estado)}${i.mensaje ? " · " + esc(i.mensaje) : ""}</td><td>${esc(new Date(i.creado).toLocaleString("es-ES"))}</td></tr>`).join("");
+  $("ad-mas").hidden = !!error || data.length < AD_N;
+  adminEstado();
+}
+$("ad-mas").onclick = () => { AD_N += 10; adminLista(); };
+async function adminEstado() {
+  const { data, error } = await sb.rpc("admin_estado_descarga"), box = $("ad-estado");
+  if (error || !data) { box.textContent = ""; return; }
+  const f = d => d ? new Date(d).toLocaleString("es-ES", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }) : "ninguna todavía";
+  const hace = d => { if (!d) return "nunca"; const m = Math.round((Date.now() - new Date(d)) / 60000); return m < 90 ? "hace " + m + " min" : m < 2880 ? "hace " + Math.round(m / 60) + " h" : "hace " + Math.round(m / 1440) + " días"; };
+  const lin = (t, x) => `<li>${t}: ${x ? `<b>${esc(x.nombre)}</b> (cargada el ${f(x.creado)})` : "ninguna todavía"}</li>`;
+  box.innerHTML = `<b>Descarga automática</b> · última búsqueda en la web de la Conselleria: <b>${hace(data.ultima_busqueda)}</b> (solo busca de lunes a viernes, de 7 a 22 h)<ul style="margin:.3rem 0 0 1.1rem;padding:0">${lin("Adjudicación continua · Maestros", data.continua_maestros)}${lin("Adjudicación continua · Secundaria y otros", data.continua_otros)}${lin("Plazas ofertadas", data.ofertas)}</ul>`;
 }
 const EST_US = { pagado: "Pagado", en_prueba: "En prueba", prueba_terminada: "Prueba terminada", pago_caducado: "Pago caducado", registrado: "Registrado", sin_identificar: "Sin identificar" };
 let USU = [];
