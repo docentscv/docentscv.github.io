@@ -703,7 +703,7 @@ const FAV_ERR = { limite: "Has llegado al máximo de favoritos.", no_existe: "No
 async function favPulsar(b) {
   if (!sb) return;
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) { show("auth"); authMode("registro"); $("au-msg").textContent = "Crea tu cuenta gratis para guardar tus centros favoritos y recibir avisos."; return; }
+  if (!session) { show("auth"); authMode("registro"); $("au-msg").textContent = "🔒 Para acceder al mapa y a los favoritos tienes que registrarte. Es gratis y solo te llevará un minuto."; return; }
   const esFav = b.dataset.fc != null, on = !b.classList.contains("on");
   const rpc = esFav ? await sb.rpc("fav_centro", { p_centro: b.dataset.fc, p_on: on })
     : await sb.rpc("seguir_dificil", { p_esp: b.dataset.sp.split("|")[0], p_plaza: b.dataset.sp.split("|").slice(1).join("|"), p_centro: b.dataset.sc, p_cuerpo: b.dataset.sb, p_on: on });
@@ -796,7 +796,7 @@ async function mapaRefrescar(pre) {
   const el = $(pre + "-map");
   if (el.hidden) {      // el mapa es solo para personas con cuenta
     let ses = null; try { ses = sb ? (await sb.auth.getSession()).data.session : null; } catch (e) {}
-    if (!ses) { show("auth"); authMode("registro"); $("au-msg").textContent = "Crea tu cuenta gratis para ver las plazas en el mapa."; return; }
+    if (!ses) { show("auth"); authMode("registro"); $("au-msg").textContent = "🔒 Para acceder al mapa y a los favoritos tienes que registrarte. Es gratis y solo te llevará un minuto."; return; }
   } el.hidden = !el.hidden; b.textContent = el.hidden ? "🗺️ Ver en el mapa" : "🗺️ Ocultar mapa";
   mapaRefrescar(pre);
 }));
