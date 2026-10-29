@@ -351,6 +351,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
       <div class="menu" id="menu-us" hidden><div class="em" id="who"></div><button id="ad-go" hidden>Administración</button><button id="mn-aj">⚙️ Ajustes y avisos</button><button id="mn-del">Eliminar mi cuenta</button><button id="logout">Salir</button></div></div>
     <div class="hola" id="perfil"></div>
     <div id="acc-box"></div>
+    <div id="dist-card"></div>
     <div id="ref-top"></div>
     <div id="analisis" hidden>
       <p class="note" id="s-aviso" style="margin:0 0 .6rem"></p>
@@ -633,7 +634,7 @@ async function cargarCentros(codes) {
   }
 }
 /* ---------- distancia a los centros: solo para quien tiene cuenta y ha indicado su domicilio ---------- */
-let GEO = null, DOM = null;      // GEO: coordenadas de las localidades (respaldo) · DOM: ubicación aproximada del usuario
+let GEO = null, DOM = null, LAST_DIST = null, ACC = null;      // GEO: coordenadas de las localidades (respaldo) · DOM: ubicación aproximada del usuario
 function kmRecto(a, b) { const R = 6371, t = x => x * Math.PI / 180, dl = t(b.lat - a.lat), dn = t(b.lon - a.lon), h = Math.sin(dl / 2) ** 2 + Math.cos(t(a.lat)) * Math.cos(t(b.lat)) * Math.sin(dn / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); }
 async function geoCargar() {
   DOM = null;
@@ -660,10 +661,7 @@ document.addEventListener("click", async ev => {
   const b = ev.target.closest(".dbtn"); if (!b || !sb) return;
   const { data: { session } } = await sb.auth.getSession();
   if (!session) { show("auth"); authMode("registro"); $("au-msg").textContent = "Crea tu cuenta gratis para ver la distancia y el tiempo hasta cada centro."; return; }
-  if (!DOM) await geoCargar();
-  if (!DOM) { show("apartado"); setTimeout(() => cfgAbrir("ajustes"), 1200); return; }
-  await cargarCentros([b.dataset.c]); const d = distInfo(b.dataset.c);
-  b.outerHTML = `<span class="dist">📍 ${d ? d.txt : "Sin datos de este centro"}</span>`;
+  LAST_DIST = b.dataset.c; show("apartado");      // la distancia se ve en Mi apartado (con acceso); sin acceso, ahí mismo se ofrece pagar o invitar
 });
 /* Domicilio: se convierte una sola vez en coordenadas (OpenStreetMap) y solo se guarda la ubicación aproximada, nunca la dirección escrita */
 async function geocodificarDom(calle, cp, loc) {
@@ -962,7 +960,7 @@ function domInit() {
   $("dom-ok").onclick = async () => {
     $("dom-msg").textContent = "Buscando tu dirección…";
     const r = await guardarDom($("dom-calle").value, $("dom-cp").value, $("dom-loc").value);
-    $("dom-msg").textContent = r.msg; if (r.ok) { $("dom-calle").value = ""; pint(); situacion(); }
+    $("dom-msg").textContent = r.msg; if (r.ok) { $("dom-calle").value = ""; pint(); situacion(); distCard(ACC); }
   };
   $("dom-del").onclick = async () => { await sb.rpc("borrar_domicilio"); DOM = null; $("dom-msg").textContent = "Domicilio borrado."; pint(); situacion(); };
 }
@@ -973,6 +971,21 @@ function refLinks(cod) {
   return { txt, wa: "https://wa.me/?text=" + encodeURIComponent(txt), tg: "https://t.me/share/url?url=" + encodeURIComponent(REFWEB) + "&text=" + encodeURIComponent(txt.replace(REFWEB, "").replace(/\s+/g, " ").trim()) };
 }
 /* Tarjeta destacada en Mi apartado (junto al nombre y a los días de prueba) */
+async function distCard(ac) {
+  const box = $("dist-card"); if (!box) return; box.innerHTML = "";
+  const cod = LAST_DIST; if (!cod || !ac) return;
+  try { await cargarCentros([cod]); } catch (e) {}
+  const c = CEN[cod] || {}, nom = esc((c.localidad ? c.localidad + " · " : "") + (c.nombre || cod)), d = ac.activo ? distInfo(cod) : null;
+  let tit, sub, cuerpo = "";
+  if (!ac.activo) { tit = "Para ver la distancia necesitas acceso"; sub = nom; cuerpo = '<p style="margin:.2rem 0 0">Tu prueba ha terminado. Más abajo puedes <b>pagar</b> o <b>conseguir la app gratis invitando a tus compañeros</b>.</p>'; }
+  else if (!DOM) { tit = "Añade tu domicilio para ver la distancia"; sub = nom; cuerpo = '<p style="margin:.2rem 0 .5rem">Así calculamos los kilómetros y el tiempo hasta este centro. Guardamos solo una ubicación aproximada.</p><button class="btn" id="dc-dom">Añadir mi domicilio</button>'; }
+  else if (d) { tit = d.txt; sub = nom + " · desde tu domicilio"; }
+  else { tit = "Sin datos de ubicación de este centro"; sub = nom; }
+  box.innerHTML = `<div class="sc" style="--c:var(--blu);--cb:var(--blu-bg);margin-top:1rem"><div class="sc-st"><i>📍</i><div>${esc(tit)}<small>${sub}</small></div></div><div class="sc-b">${cuerpo}<p style="margin:.4rem 0 0"><button class="link" id="dc-x">Cerrar ✕</button></p></div></div>`;
+  $("dc-x").onclick = () => { LAST_DIST = null; box.innerHTML = ""; };
+  if ($("dc-dom")) $("dc-dom").onclick = () => cfgAbrir("ajustes");
+  box.scrollIntoView({ behavior: "smooth", block: "start" });
+}
 async function refTop(ac) {
   const box = $("ref-top"); if (!box) return; box.innerHTML = "";
   let data; try { data = (await sb.rpc("mi_referidos")).data; } catch (e) {} if (!data || data.gratis) return;
@@ -1076,7 +1089,7 @@ async function renderApartado() {
     if (data === "ok") return renderApartado();
     $("adn-msg").textContent = data === "no_encontrado" ? "No encontramos ese nombre en las listas." : "No tienes permiso.";
   };
-  const ac = await accesoInfo(); pintarAcceso(ac); refTop(ac);
+  const ac = await accesoInfo(); pintarAcceso(ac); ACC = ac; refTop(ac); distCard(ac);
   if (!ac.activo) { $("analisis").hidden = true; return; }
   $("analisis").hidden = false;
   situacion();
