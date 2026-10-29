@@ -791,9 +791,13 @@ async function mapaRefrescar(pre) {
   });
   setTimeout(() => { m.map.invalidateSize(); if (pts.length) m.map.fitBounds(L.latLngBounds(pts).pad(.15), { maxZoom: 12 }); }, 80);
 }
-["of", "dc"].forEach(pre => document.addEventListener("click", ev => {
+["of", "dc"].forEach(pre => document.addEventListener("click", async ev => {
   const b = ev.target.closest("#" + pre + "-mapbtn"); if (!b) return;
-  const el = $(pre + "-map"); el.hidden = !el.hidden; b.textContent = el.hidden ? "🗺️ Ver en el mapa" : "🗺️ Ocultar mapa";
+  const el = $(pre + "-map");
+  if (el.hidden) {      // el mapa es solo para personas con cuenta
+    let ses = null; try { ses = sb ? (await sb.auth.getSession()).data.session : null; } catch (e) {}
+    if (!ses) { show("auth"); authMode("registro"); $("au-msg").textContent = "Crea tu cuenta gratis para ver las plazas en el mapa."; return; }
+  } el.hidden = !el.hidden; b.textContent = el.hidden ? "🗺️ Ver en el mapa" : "🗺️ Ocultar mapa";
   mapaRefrescar(pre);
 }));
 /* Domicilio: se convierte una sola vez en coordenadas (OpenStreetMap) y solo se guarda la ubicación aproximada, nunca la dirección escrita */
