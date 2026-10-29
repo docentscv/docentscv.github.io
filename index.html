@@ -69,6 +69,8 @@ body{padding-bottom:calc(4.9rem + env(safe-area-inset-bottom,0px));overscroll-be
 #onb p{color:var(--muted);font-size:1.1rem;max-width:30ch;margin:0}
 #onb .ft{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.5rem 1.4rem;max-width:30rem;width:100%;margin:0 auto}
 #onb .dots{display:flex;gap:.4rem}#onb .dots i{width:.55rem;height:.55rem;border-radius:1rem;background:var(--line);transition:all .25s}#onb .dots i.on{width:1.5rem;background:var(--accent)}
+.dist{display:inline-block;white-space:nowrap;margin-top:.15rem;padding:.05rem .5rem;border-radius:99px;background:var(--blu-bg);color:var(--blu);font-weight:700}
+.dbtn{margin-top:.15rem;padding:.05rem .6rem;border-radius:99px;border:1px solid var(--blu);background:var(--blu-bg);color:var(--blu);font:700 .8rem var(--body);cursor:pointer;white-space:nowrap}
 @media (prefers-reduced-motion:reduce){.view:not([hidden]),#onb .art,.skel::after{animation:none}}
 /* ---------- pulido: inicio y Mi apartado ---------- */
 .home-hero .cta{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1.1rem}
@@ -383,6 +385,16 @@ details.panel[open]>summary{margin-bottom:.8rem}
       <div class="scroll"><table><thead><tr><th>Correo</th><th>Nombre</th><th>Alta</th><th>Estado</th><th>Pagó el</th><th>Válido hasta</th></tr></thead><tbody id="us-rows"></tbody></table></div>
     </details>
 
+    <details class="panel" id="adm-cad">
+      <summary>Pruebas terminadas sin pagar (15 días o más)</summary>
+      <p class="note" style="margin:.2rem 0 .5rem">Personas que usaron los 7 días de prueba y a los 15 días siguen sin pagar. Pulsa «Enviar descuento» para abrir un correo ya redactado (con un precio rebajado y tu código promocional de Google Play, más el recordatorio de invitar a 3 personas).</p>
+      <div class="filters"><label>Tu código promocional de Play <input id="cad-cod" type="text" placeholder="Ej.: DOCENTS749" style="width:12rem"></label><label>Precio con descuento <input id="cad-pre" type="text" placeholder="Ej.: 5,99" style="width:5rem"> €</label><button class="btn" id="cad-copiar">Copiar todos los correos</button></div>
+      <div id="cad-res" class="note">Cargando…</div>
+      <div class="scroll"><table><thead><tr><th>Correo</th><th>Nombre</th><th class="n">Días</th><th>Descuento enviado</th><th></th></tr></thead><tbody id="cad-rows"></tbody></table></div>
+      <h3 style="margin:1rem 0 .3rem;font:600 1rem var(--body)">Referidos</h3>
+      <div class="scroll"><table><thead><tr><th>Quien invita</th><th>Código</th><th class="n">Invitados</th><th class="n">Han pagado</th></tr></thead><tbody id="ref-rows"></tbody></table></div>
+    </details>
+
     <details class="panel" id="admin">
       <summary>Subir PDF</summary>
       <h2>1. Subir PDF de puestos ofertados</h2>
@@ -473,7 +485,7 @@ function show(v) {
   tb.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
   if (v === "consulta") { consultaInit(); if (!$("rows").children.length) load(true); }
   if (v === "apartado") renderApartado();
-  if (v === "admin") { if (!ADMIN) return show("home"); adminLista(); adminUsuarios(); }
+  if (v === "admin") { if (!ADMIN) return show("home"); adminLista(); adminUsuarios(); adminCaducadas(); }
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (b) { try { navigator.vibrate && navigator.vibrate(8); } catch (_) {} show(b.dataset.go); } });
 
@@ -608,9 +620,65 @@ const espNom = (cuerpo, cod) => { const e = ESPU.find(x => x.codigo === cod); re
 async function cargarCentros(codes) {
   const need = [...new Set(codes.filter(c => c && !CEN[c]))];
   for (let i = 0; i < need.length; i += 150) {
-    const r = await getJ(`centros?select=codigo,nombre,localidad,provincia&codigo=in.(${need.slice(i, i + 150).map(enc).join(",")})&limit=1000`);
+    const ids = need.slice(i, i + 150).map(enc).join(",");
+    let r; try { r = await getJ(`centros?select=codigo,nombre,localidad,provincia,lat,lon&codigo=in.(${ids})&limit=1000`); }
+    catch (e) { r = await getJ(`centros?select=codigo,nombre,localidad,provincia&codigo=in.(${ids})&limit=1000`); }
     r.forEach(c => CEN[c.codigo] = c);
   }
+}
+/* ---------- distancia a los centros: solo para quien tiene cuenta y ha indicado su domicilio ---------- */
+let GEO = null, DOM = null;      // GEO: coordenadas de las localidades (respaldo) · DOM: ubicación aproximada del usuario
+function kmRecto(a, b) { const R = 6371, t = x => x * Math.PI / 180, dl = t(b.lat - a.lat), dn = t(b.lon - a.lon), h = Math.sin(dl / 2) ** 2 + Math.cos(t(a.lat)) * Math.cos(t(b.lat)) * Math.sin(dn / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); }
+async function geoCargar() {
+  DOM = null;
+  try {
+    if (!sb) return; const { data: { session } } = await sb.auth.getSession(); if (!session) return;
+    const { data } = await sb.rpc("mi_domicilio"); DOM = data && data.lat != null ? data : null;
+    if (DOM && !GEO) { const rows = await getJ("localidades_geo?select=localidad,provincia,lat,lon&lat=not.is.null&limit=2000"); GEO = new Map(rows.map(g => [g.localidad + "|" + g.provincia, g])); }
+  } catch (e) {}
+}
+function distInfo(cod) {
+  if (!DOM) return null;
+  const c = CEN[cod] || {}, b = (c.lat != null && c.lon != null) ? c : (GEO && GEO.get((c.localidad || "") + "|" + (c.provincia || "")));
+  if (!b || b.lat == null) return null;
+  const km = kmRecto(DOM, b) * 1.3, v = km < 20 ? 45 : km < 60 ? 65 : 80, min = Math.max(5, Math.round(km / v * 60 / 5) * 5);   // carretera ≈ 1,3 × línea recta
+  const hm = min >= 60 ? Math.floor(min / 60) + " h" + (min % 60 ? " " + (min % 60) + " min" : "") : min + " min";
+  return { km, min, txt: km < 1 ? "A menos de 1 km" : "≈ " + Math.round(km) + " km · " + hm };
+}
+const distTxt = cod => { const d = distInfo(cod); return d ? " · 📍 " + d.txt : ""; };
+const distLinea = cod => { const d = distInfo(cod); return d ? `<p style="margin:.2rem 0 .5rem"><span class="dist" title="Distancia aproximada por carretera desde tu domicilio">📍 ${d.txt}</span></p>` : ""; };
+const distCmp = (a, b) => { if (DOM) { const x = distInfo(a[0]), y = distInfo(b[0]); const d = (x ? x.km : 1e9) - (y ? y.km : 1e9); if (d) return d; } return (a[1].l + a[1].n).localeCompare(b[1].l + b[1].n); };
+/* En Consulta solo se ve el icono: al pulsarlo hay que tener cuenta (y domicilio) para ver el resultado */
+const distBtn = r => r.centro_codigo ? `<br><button type="button" class="dbtn" data-c="${esc(r.centro_codigo)}" title="Ver la distancia desde tu domicilio">📍 Distancia</button>` : "";
+document.addEventListener("click", async ev => {
+  const b = ev.target.closest(".dbtn"); if (!b || !sb) return;
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { show("auth"); authMode("registro"); $("au-msg").textContent = "Crea tu cuenta gratis para ver la distancia y el tiempo hasta cada centro."; return; }
+  if (!DOM) await geoCargar();
+  if (!DOM) { show("apartado"); setTimeout(() => cfgAbrir("ajustes"), 1200); return; }
+  await cargarCentros([b.dataset.c]); const d = distInfo(b.dataset.c);
+  b.outerHTML = `<span class="dist">📍 ${d ? d.txt : "Sin datos de este centro"}</span>`;
+});
+/* Domicilio: se convierte una sola vez en coordenadas (OpenStreetMap) y solo se guarda la ubicación aproximada, nunca la dirección escrita */
+async function geocodificarDom(calle, cp, loc) {
+  const qs = []; if (calle) qs.push([`${calle}, ${cp} ${loc}, España`, true]); qs.push([`${cp} ${loc}, España`, false]);
+  for (const [q, exacta] of qs) {
+    try {
+      const r = await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=es&accept-language=es&viewbox=-1.6,40.9,0.8,37.7&bounded=1&q=" + encodeURIComponent(q)), j = await r.json();
+      if (j && j[0]) return { lat: +j[0].lat, lon: +j[0].lon, exacta };
+    } catch (e) {}
+  }
+  return null;
+}
+async function guardarDom(calle, cp, loc) {
+  calle = (calle || "").trim(); cp = (cp || "").trim(); loc = (loc || "").trim();
+  if (!/^\d{5}$/.test(cp) || loc.length < 2) return { ok: false, msg: "Escribe el código postal (5 cifras) y la localidad." };
+  const p = await geocodificarDom(calle, cp, loc);
+  if (!p) return { ok: false, msg: "No hemos encontrado esa dirección. Prueba solo con el código postal y la localidad." };
+  const { data, error } = await sb.rpc("guardar_domicilio", { p_lat: p.lat, p_lon: p.lon, p_cp: cp, p_localidad: loc });
+  if (error || data !== "ok") return { ok: false, msg: data === "fuera_de_zona" ? "Esa ubicación está fuera de la Comunitat Valenciana." : "No se pudo guardar el domicilio." };
+  DOM = { lat: p.lat, lon: p.lon, cp, localidad: loc };
+  return { ok: true, exacta: p.exacta, msg: p.exacta ? "Domicilio guardado." : "Hemos localizado tu código postal (no la calle exacta): las distancias serán algo más aproximadas." };
 }
 const ultimaInst = g => INST.filter(i => i.tipo === "continua" && i.grupo === g).sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
 async function ultRows(g) {
@@ -741,7 +809,7 @@ async function cargarDif() {
     return (DIF = { fecha: f[0].fecha, rows, adj, adjN, adjB });
   } catch (e) { return (DIF = { fecha: null, rows: [] }); }
 }
-const difItem = r => `<div class="it"><div class="a"><b>${esc(r.centro || r.centro_codigo)}</b><small>${esc(r.localidad || "")}${r.req_ling ? " · req. " + esc(r.req_ling.replace(/\.$/, "")) : ""}${r.observ ? " · " + esc(r.observ) : ""}</small></div><div class="z">${DIF && DIF.adj && DIF.adj.has(r.especialidad_codigo + "|" + r.codigo_plaza) ? '<span class="tag" style="background:var(--ok-bg);color:var(--ok)">✔ Adjudicada</span> ' : ""}<span class="tag">${r.tipo === "vacante" ? "Vacante" : "Sustitución"}</span></div></div>`;
+const difItem = r => `<div class="it"><div class="a"><b>${esc(r.centro || r.centro_codigo)}</b><small>${esc(r.localidad || "")}${r.req_ling ? " · req. " + esc(r.req_ling.replace(/\.$/, "")) : ""}${r.observ ? " · " + esc(r.observ) : ""}${distBtn(r)}</small></div><div class="z">${DIF && DIF.adj && DIF.adj.has(r.especialidad_codigo + "|" + r.codigo_plaza) ? '<span class="tag" style="background:var(--ok-bg);color:var(--ok)">✔ Adjudicada</span> ' : ""}<span class="tag">${r.tipo === "vacante" ? "Vacante" : "Sustitución"}</span></div></div>`;
 async function difInit() {
   const o = await cargarDif();
   if (!o.fecha) { $("dc-panel").hidden = true; return; }
@@ -796,7 +864,7 @@ function ofPintar() {
   const gr = new Map(); fil.forEach(r => { if (!gr.has(r.especialidad_codigo)) gr.set(r.especialidad_codigo, []); gr.get(r.especialidad_codigo).push(r); });
   $("of-body").innerHTML = fil.length ? [...gr].map(([e, rs]) => {
     const a = alcanceUlt(e), ctx = a ? (a.p ? ` · en la última tanda (${fmtF(a.f)}) se llegó hasta la posición <strong>${a.p}</strong>` : ` · sin adjudicaciones en la última tanda (${fmtF(a.f)})`) : "";
-    return `<div class="note" style="margin:.9rem 0 .2rem"><strong>${esc(espNom("", e))}</strong> — ${rs.length} plaza${rs.length === 1 ? "" : "s"}${ctx}</div>` + rs.map(r => `<div class="it"><div class="a"><b>${esc(r.centro || r.centro_codigo)}</b><small>${esc(r.localidad || "")}${r.req_ling ? " · req. " + esc(r.req_ling.replace(/\.$/, "")) : ""}${r.observ ? " · " + esc(r.observ) : ""}</small></div><div class="z"><span class="tag">${r.tipo === "vacante" ? "Vacante" : "Sustitución"}</span></div></div>`).join("");
+    return `<div class="note" style="margin:.9rem 0 .2rem"><strong>${esc(espNom("", e))}</strong> — ${rs.length} plaza${rs.length === 1 ? "" : "s"}${ctx}</div>` + rs.map(r => `<div class="it"><div class="a"><b>${esc(r.centro || r.centro_codigo)}</b><small>${esc(r.localidad || "")}${r.req_ling ? " · req. " + esc(r.req_ling.replace(/\.$/, "")) : ""}${r.observ ? " · " + esc(r.observ) : ""}${distBtn(r)}</small></div><div class="z"><span class="tag">${r.tipo === "vacante" ? "Vacante" : "Sustitución"}</span></div></div>`).join("");
   }).join("") : '<p class="note">No hay plazas con esos filtros.</p>';
 }
 $("of-cuerpo").addEventListener("change", () => { ofEsp(); ofPintar(); });
@@ -851,22 +919,23 @@ $("del-ok").onclick = async () => {
   if (data === "es_admin") return msg("Esta cuenta es de administrador y no se puede eliminar desde aquí.");
   if (data !== "ok") return msg("No se pudo eliminar la cuenta.");
   try { await sb.auth.signOut(); } catch (e) {}
-  USER = null; ADMIN = false; $("del-txt").value = ""; show("home");
+  USER = null; DOM = null; ADMIN = false; $("del-txt").value = ""; show("home");
   alert("Tu cuenta se ha eliminado correctamente.");
 };
-$("logout").onclick = async () => { if (sb) await sb.auth.signOut(); USER = null; show("home"); };
+$("logout").onclick = async () => { if (sb) await sb.auth.signOut(); USER = null; DOM = null; show("home"); };
 
 /* ---------- MI APARTADO ---------- */
 // ---- Acceso: prueba gratuita y pago (el cierre real lo hace la base de datos)
 let SIM = null;   // solo administradores: simula "prueba" o "fin" para ver cómo queda
 async function accesoInfo() {
-  if (ADMIN && SIM === "fin") return { cobro_activo: true, activo: false, precio: "9.99", fin_curso: "2027-06-30" };
-  if (ADMIN && SIM === "prueba") return { cobro_activo: true, activo: true, en_prueba: true, dias_restantes: 5, precio: "9.99", fin_curso: "2027-06-30" };
+  if (ADMIN && SIM === "fin") return { cobro_activo: true, activo: false, precio: "7.49", fin_curso: "2027-06-30" };
+  if (ADMIN && SIM === "prueba") return { cobro_activo: true, activo: true, en_prueba: true, dias_restantes: 5, precio: "7.49", fin_curso: "2027-06-30" };
   try { const { data, error } = await sb.rpc("mi_acceso"); if (!error && data) return data; } catch (e) {}
   return { cobro_activo: false, activo: true };
 }
 function pintarAcceso(ac) {
-  const box = $("acc-box"), pr = String(ac.precio || "9.99").replace(".", ","), fin = ac.fin_curso ? fmtF(ac.fin_curso) : "";
+  const box = $("acc-box"), pr = String(ac.precio || "7.49").replace(".", ","), fin = ac.fin_curso ? fmtF(ac.fin_curso) : "";
+  if (ac.gratis_referidos) { box.innerHTML = `<div class="sc" style="--c:var(--ok);--cb:var(--ok-bg);margin-top:1rem"><div class="sc-st"><i>🎉</i><div>Tienes la app gratis este curso<small>Gracias por invitar a 3 personas${fin ? ". Acceso hasta el " + fin : ""}.</small></div></div></div>`; return; }
   if (!ac.cobro_activo || (ac.activo && !ac.en_prueba)) { box.innerHTML = ""; return; }
   if (ac.activo) {
     const n = ac.dias_restantes;
@@ -881,6 +950,33 @@ function pintarAcceso(ac) {
   $("pagar").onclick = () => { $("pagar-msg").textContent = "El pago estará disponible muy pronto en la app de Android."; };
 }
 
+function domInit() {
+  const pint = () => { $("dom-txt").textContent = DOM ? `Tienes guardada tu ubicación (${DOM.cp || ""} ${DOM.localidad || ""}). Si te mudas, escribe la nueva dirección y pulsa Guardar.` : "Todavía no has indicado tu domicilio: sin él no podemos calcular distancias."; $("dom-del").hidden = !DOM; };
+  pint();
+  $("dom-ok").onclick = async () => {
+    $("dom-msg").textContent = "Buscando tu dirección…";
+    const r = await guardarDom($("dom-calle").value, $("dom-cp").value, $("dom-loc").value);
+    $("dom-msg").textContent = r.msg; if (r.ok) { $("dom-calle").value = ""; pint(); situacion(); }
+  };
+  $("dom-del").onclick = async () => { await sb.rpc("borrar_domicilio"); DOM = null; $("dom-msg").textContent = "Domicilio borrado."; pint(); situacion(); };
+}
+const REF_ERR = { no_existe: "Ese código no existe. Revísalo.", propio: "No puedes usar tu propio código.", ya_usado: "Ya has usado un código de invitación.", circular: "Esa persona se registró con tu código, así que no puede contar.", caducado: "El código solo se puede usar durante los primeros 30 días de tu cuenta." };
+async function refInit() {
+  const body = $("ref-body"); if (!body) return;
+  const { data, error } = await sb.rpc("mi_referidos");
+  if (error || !data) { body.textContent = "No disponible en este momento."; return; }
+  const txt = `Estoy usando DocentsCV para seguir las adjudicaciones de interinos de la Comunitat Valenciana. Entra en https://docentscv.github.io/, crea tu cuenta y pon mi código de invitación: ${data.codigo}`;
+  body.innerHTML = `<div style="font:800 1.4rem var(--display);letter-spacing:.04em;margin:.2rem 0">${esc(data.codigo)}</div>
+    <p style="margin:.2rem 0 .5rem">Invitados: <b>${data.invitados}</b> · han pagado: <b>${data.pagados} de ${data.necesarios}</b>${data.gratis ? " · 🎉 ¡Conseguido! Tienes la app gratis este curso." : ""}</p>
+    <div class="filters"><button class="btn" id="ref-share">Compartir mi código</button><button class="link" id="ref-copy">Copiar</button></div>
+    ${data.usado ? "" : '<div class="filters" style="margin-top:.6rem"><label>¿Te invitó alguien? Su código <input id="ref-in" type="text" placeholder="DCV-XXXXX" maxlength="12" style="text-transform:uppercase;width:9rem"></label><button class="btn" id="ref-use">Usar código</button></div>'}`;
+  $("ref-share").onclick = async () => { try { if (navigator.share) { await navigator.share({ text: txt }); return; } } catch (e) { return; } try { await navigator.clipboard.writeText(txt); $("ref-msg").textContent = "Mensaje copiado: pégalo en WhatsApp o donde quieras."; } catch (e) { $("ref-msg").textContent = txt; } };
+  $("ref-copy").onclick = async () => { try { await navigator.clipboard.writeText(data.codigo); $("ref-msg").textContent = "Código copiado."; } catch (e) { $("ref-msg").textContent = "Tu código: " + data.codigo; } };
+  if ($("ref-use")) $("ref-use").onclick = async () => {
+    const { data: r } = await sb.rpc("usar_codigo", { p_codigo: $("ref-in").value });
+    $("ref-msg").textContent = r === "ok" ? "¡Código aplicado! Gracias." : (REF_ERR[r] || "No se pudo aplicar el código."); if (r === "ok") refInit();
+  };
+}
 async function renderApartado() {
   if (!sb) { show("auth"); authMode("login"); $("au-msg").textContent = "No se pudo cargar el sistema de cuentas. Recarga la página."; return; }
   const { data: { session } } = await sb.auth.getSession();
@@ -893,8 +989,11 @@ async function renderApartado() {
   if (!idn) {
     $("analisis").hidden = true; $("acc-box").innerHTML = ""; $("ajustes").hidden = true; $("perfil").innerHTML = "";
     $("perfil").innerHTML = `<h2>Identifícate</h2><p style="margin:0 0 .75rem">Escribe tu nombre exactamente como sale en las listas oficiales: apellidos, una coma y el nombre. <strong>No se podrá cambiar después.</strong></p>
-      <div class="filters"><label>Tu nombre <input id="n-nom" type="text" autocomplete="off" placeholder="APELLIDO1 APELLIDO2, NOMBRE" style="min-width:min(22rem,80vw)"></label><button class="btn" id="n-ok">Confirmar</button></div>
-      <label class="chk"><input type="checkbox" id="n-av"><span>Quiero recibir por email un aviso cuando salgan plazas ofertadas en mis bolsas (opcional; puedes cambiarlo cuando quieras).</span></label><p class="note" id="n-msg" role="status"></p>`;
+      <div class="filters"><label>Tu nombre <input id="n-nom" type="text" autocomplete="off" placeholder="APELLIDO1 APELLIDO2, NOMBRE" style="min-width:min(22rem,80vw)"></label></div>
+      <p class="note" style="margin:.9rem 0 .3rem"><b>📍 Tu domicilio</b> (opcional): lo usamos solo para calcular la distancia y el tiempo hasta cada centro. Guardamos una ubicación aproximada, no la dirección. Puedes cambiarlo o borrarlo después en Ajustes.</p>
+      <div class="filters"><label>Calle y número <input id="n-calle" type="text" autocomplete="street-address" style="min-width:min(16rem,70vw)"></label><label>C. postal <input id="n-cp" type="text" inputmode="numeric" maxlength="5" autocomplete="postal-code" style="width:6.5rem"></label><label>Localidad <input id="n-loc" type="text" autocomplete="address-level2"></label></div>
+      <div class="filters"><label>¿Te invitó alguien? Su código (opcional) <input id="n-ref" type="text" placeholder="DCV-XXXXX" maxlength="12" style="text-transform:uppercase;width:9rem"></label></div>
+      <label class="chk"><input type="checkbox" id="n-av"><span>Quiero recibir por email un aviso cuando salgan plazas ofertadas en mis bolsas (opcional; puedes cambiarlo cuando quieras).</span></label><p style="margin:.8rem 0 .3rem"><button class="btn" id="n-ok">Confirmar</button></p><p class="note" id="n-msg" role="status"></p>`;
     $("n-ok").onclick = async () => {
       const nom = $("n-nom").value.trim(), msg = s => { $("n-msg").textContent = s; };
       if (nom.length < 6) return msg("Escribe tu nombre completo: apellidos, una coma y el nombre.");
@@ -902,7 +1001,12 @@ async function renderApartado() {
       msg("Buscando en las listas…");
       const { data, error } = await sb.rpc("reclamar_nombre", { p_nombre: nom });
       if (error) return msg("No se pudo comprobar: " + error.message);
-      if (data === "ok" || data === "ya_tiene") { if ($("n-av").checked) { try { await sb.from("perfiles").upsert({ id: USER.id, avisos: true }); } catch (e) {} } return pedirEsp(); }
+      if (data === "ok" || data === "ya_tiene") {
+        if ($("n-av").checked) { try { await sb.from("perfiles").upsert({ id: USER.id, avisos: true }); } catch (e) {} }
+        if ($("n-cp").value.trim() || $("n-calle").value.trim()) { msg("Guardando tu domicilio…"); try { const r = await guardarDom($("n-calle").value, $("n-cp").value, $("n-loc").value); if (!r.ok) alert(r.msg + "\nPodrás indicarlo más tarde en Ajustes."); } catch (e) {} }
+        if ($("n-ref").value.trim()) { try { const { data: rr } = await sb.rpc("usar_codigo", { p_codigo: $("n-ref").value }); if (rr !== "ok") alert(REF_ERR[rr] || "No se pudo aplicar el código de invitación."); } catch (e) {} }
+        return pedirEsp();
+      }
       msg(data === "ambiguo" ? "Hay más de una persona con ese nombre y todavía no podemos distinguirte. Escríbenos y lo resolvemos." : data === "no_encontrado" ? "No encontramos ese nombre en las listas. Escríbelo como aparece en el PDF: apellidos, coma y nombre." : "Vuelve a entrar con tu cuenta.");
     };
     return;
@@ -913,10 +1017,21 @@ async function renderApartado() {
   const espTxt = espMia.map(c => { const e = ESPU.find(x => x.codigo === c); return `<span class="tag" style="margin:.15rem .25rem 0 0">${esc(c)} · ${esc(e ? e.nombre : "")}</span>`; }).join("");
   const pn = (idn.split(",")[1] || idn).trim().toLowerCase().replace(/(^|\s)\S/g, c => c.toUpperCase());
   $("perfil").innerHTML = `<div class="h">Hola, ${esc(pn)} 👋</div><div class="nm">${esc(idn)}</div>${espTxt ? `<div>${espTxt}</div>` : ""}`;
-  $("ajustes").hidden = false;
+  $("ajustes").hidden = false; await geoCargar();
   $("ajustes-body").innerHTML = `<p class="note" style="margin:0 0 .4rem">Si hay un error en tu nombre o especialidades, escríbenos para corregirlo.</p>
     <label class="chk"><input type="checkbox" id="av-chk" disabled><span>Avisarme por email cuando salgan plazas ofertadas en mis bolsas</span></label><p class="note" id="av-msg" role="status" style="margin:.2rem 0 0"></p>
-    <div class="panel" id="push-box" style="margin:.8rem 0 0"><b>🔔 Avisos en este dispositivo</b><p class="note" id="push-txt" style="margin:.3rem 0 .5rem">Comprobando…</p><button class="btn" id="push-btn" hidden>Activar notificaciones</button></div>`
+    <div class="panel" id="push-box" style="margin:.8rem 0 0"><b>🔔 Avisos en este dispositivo</b><p class="note" id="push-txt" style="margin:.3rem 0 .5rem">Comprobando…</p><button class="btn" id="push-btn" hidden>Activar notificaciones</button></div>
+    <div class="panel" id="dom-box" style="margin:.8rem 0 0"><b>📍 Mi domicilio</b>
+      <p class="note" style="margin:.3rem 0 .5rem">Sirve para calcular la distancia y el tiempo hasta cada centro. Solo guardamos una ubicación aproximada (coordenadas), <strong>no la dirección escrita</strong>. Puedes borrarla cuando quieras.</p>
+      <p class="note" id="dom-txt" style="margin:0 0 .5rem"></p>
+      <div class="filters"><label>Calle y número <input id="dom-calle" type="text" autocomplete="street-address" placeholder="Opcional, mejora la precisión" style="min-width:min(16rem,70vw)"></label>
+        <label>C. postal <input id="dom-cp" type="text" inputmode="numeric" maxlength="5" autocomplete="postal-code" style="width:6.5rem"></label>
+        <label>Localidad <input id="dom-loc" type="text" autocomplete="address-level2"></label>
+        <button class="btn" id="dom-ok">Guardar</button><button class="link" id="dom-del" hidden>Borrar mi domicilio</button></div>
+      <p class="note" id="dom-msg" role="status" style="margin:.4rem 0 0"></p></div>
+    <div class="panel" id="ref-box" style="margin:.8rem 0 0"><b>🎁 Invita y consigue la app gratis</b>
+      <p class="note" style="margin:.3rem 0 .5rem">Si <strong>3 personas</strong> se registran con tu código <strong>y pagan</strong> la app, tu curso es gratis.</p>
+      <div id="ref-body" class="note">Cargando…</div><p class="note" id="ref-msg" role="status" style="margin:.4rem 0 0"></p></div>`
     + (ADMIN ? `<button class="btn" id="adesp" style="margin-top:.4rem">Administrador: cambiar mis especialidades</button>` : "")
     + (ADMIN ? `<details style="margin-top:.6rem"><summary class="note" style="cursor:pointer">Administrador: ver la web como otra persona</summary>
       <div class="filters" style="margin-top:.5rem"><label>Nombre en las listas <input id="adn-nom" type="text" autocomplete="off" placeholder="APELLIDO1 APELLIDO2, NOMBRE" style="min-width:min(22rem,80vw)"></label><button class="btn" id="adn-ok">Cambiar</button></div>
@@ -925,7 +1040,7 @@ async function renderApartado() {
     const chk = $("av-chk"); chk.checked = !!(pf && pf.avisos === true); chk.disabled = false;
     chk.onchange = async () => { const { error } = await sb.from("perfiles").upsert({ id: USER.id, avisos: chk.checked }); $("av-msg").textContent = error ? "No se pudo guardar: " + error.message : (chk.checked ? "Avisos activados." : "Avisos desactivados."); };
   } catch (e) {}
-  pushInit();
+  pushInit(); domInit(); refInit();
   if (ADMIN && $("adesp")) $("adesp").onclick = () => pedirEsp(true);
   if (ADMIN) { $("sim-p").onclick = () => { SIM = "prueba"; renderApartado(); }; $("sim-f").onclick = () => { SIM = "fin"; renderApartado(); }; $("sim-n").onclick = () => { SIM = null; renderApartado(); }; }
   if (ADMIN) $("adn-ok").onclick = async () => {
@@ -975,6 +1090,32 @@ function usuPintar() {
   const fil = USU.filter(u => (!es || u.estado === es) && (!q || ((u.email || "") + " " + (u.nombre || "")).toLowerCase().includes(q)));
   $("us-rows").innerHTML = fil.length ? fil.slice(0, 500).map(u => `<tr><td>${esc(u.email)}</td><td>${esc(u.nombre || "—")}</td><td>${f(u.alta)}</td><td>${esc(EST_US[u.estado] || u.estado)}</td><td>${u.estado === "pagado" || u.estado === "pago_caducado" ? f(u.pagado_el) : "—"}</td><td>${u.pagado_hasta ? fmtF(u.pagado_hasta) : "—"}</td></tr>`).join("") : '<tr><td colspan="6">Sin resultados.</td></tr>';
 }
+let CAD = [];
+const nomPila = n => ((n || "").split(",")[1] || n || "").trim().toLowerCase().replace(/(^|\s)\S/g, c => c.toUpperCase());
+try { $("cad-cod").value = localStorage.getItem("dcv_promo") || ""; } catch (e) {}
+$("cad-cod").addEventListener("input", () => { try { localStorage.setItem("dcv_promo", $("cad-cod").value); } catch (e) {} });
+function cadPintar() {
+  const f = d => d ? new Date(d).toLocaleDateString("es-ES") : "—";
+  $("cad-res").innerHTML = CAD.length ? `<b>${CAD.length}</b> persona${CAD.length === 1 ? "" : "s"} · <b>${CAD.filter(u => !u.avisado).length}</b> sin avisar` : "Nadie por ahora. (Solo se rellena cuando el cobro está activado.)";
+  $("cad-rows").innerHTML = CAD.map((u, i) => `<tr><td>${esc(u.email)}</td><td>${esc(u.nombre || "—")}</td><td class="n">${u.dias}</td><td>${f(u.avisado)}</td><td><button class="btn" data-i="${i}" style="padding:.2rem .7rem">✉️ Enviar descuento</button></td></tr>`).join("");
+  $("cad-rows").querySelectorAll("button").forEach(b => b.onclick = async () => {
+    const u = CAD[+b.dataset.i], cod = $("cad-cod").value.trim(), pre = $("cad-pre").value.trim();
+    if (!pre) { alert("Escribe primero el precio con descuento (por ejemplo 5,99)."); return; }
+    if (!cod && !confirm("No has escrito tu código promocional de Play: el correo saldrá sin él. ¿Continuar?")) return;
+    const asunto = "Un descuento para seguir con DocentsCV";
+    const cuerpo = `Hola${nomPila(u.nombre) ? ", " + nomPila(u.nombre) : ""}:\n\nProbaste DocentsCV durante la semana de prueba y quería ofrecerte un precio especial: ${pre} € por todo el curso 2026/27 (en lugar de 7,49 €).${cod ? `\n\nTu código de descuento: ${cod}\nPuedes canjearlo en Google Play: Menú → Pagos y suscripciones → Canjear código.` : ""}\n\nY si prefieres conseguirla gratis: en Mi apartado → Ajustes encontrarás tu código personal. Si 3 personas se registran con él y pagan, tu curso es gratis.\n\nGracias por usar DocentsCV.\nFede`;
+    location.href = "mailto:" + encodeURIComponent(u.email).replace(/%40/g, "@") + "?subject=" + encodeURIComponent(asunto) + "&body=" + encodeURIComponent(cuerpo);
+    try { await sb.rpc("admin_marcar_descuento", { p_email: u.email }); } catch (e) {}
+    adminCaducadas();
+  });
+}
+async function adminCaducadas() {
+  const a = await sb.rpc("admin_pruebas_caducadas"), r = await sb.rpc("admin_referidos");
+  if (a.error) { $("cad-res").innerHTML = `<span class="err">${esc(a.error.message)}</span>`; return; }
+  CAD = a.data || []; cadPintar();
+  $("ref-rows").innerHTML = (r.data || []).length ? r.data.map(x => `<tr><td>${esc(x.anfitrion)}</td><td>${esc(x.codigo)}</td><td class="n">${x.invitados}</td><td class="n">${x.pagados}</td></tr>`).join("") : '<tr><td colspan="4">Todavía no hay referidos.</td></tr>';
+}
+$("cad-copiar").onclick = async () => { const t = CAD.map(u => u.email).join(", "); try { await navigator.clipboard.writeText(t); $("cad-res").textContent = "Correos copiados (" + CAD.length + ")."; } catch (e) { $("cad-res").textContent = t; } };
 $("us-q").addEventListener("input", usuPintar); $("us-est").addEventListener("change", usuPintar);
 function subirPdf(tipo, fileId, msgId, cuerpoFn) {
   return async () => {
@@ -1083,6 +1224,7 @@ async function oportunidades(pan, espMia) {
   await cargarOfertas();
   const { data, error } = await sb.rpc("mi_oportunidades");
   if (error) { $("oport-body").innerHTML = `<p class="err">${esc(error.message)}</p>`; return; }
+  if (DOM) { try { await cargarCentros((data || []).map(o => o.centro_codigo)); } catch (e) {} }
   const por = {}; (data || []).forEach(o => (por[o.lista_id] ||= []).push(o));
   let html = "";
   pan.forEach(r => {
@@ -1096,8 +1238,8 @@ async function oportunidades(pan, espMia) {
     const ultima = rows.length ? rows[0].fecha : "", cen = new Map(), ofCod = new Map();
     ofe.forEach(o => { if (!ofCod.has(o.centro_codigo)) ofCod.set(o.centro_codigo, { n: o.centro || o.centro_codigo, l: o.localidad || "", k: 0 }); ofCod.get(o.centro_codigo).k++; });
     rows.forEach(o => { if (!cen.has(o.centro_codigo)) cen.set(o.centro_codigo, { n: o.centro || o.centro_codigo, l: o.localidad || "", u: o.fecha === ultima }); });
-    const optO = [...ofCod].sort((a, b) => (a[1].l + a[1].n).localeCompare(b[1].l + b[1].n)).map(([k, c]) => `<option value="${esc(k)}">${esc(c.l)} · ${esc(c.n)}${c.k > 1 ? " (" + c.k + " plazas)" : ""}</option>`).join("");
-    const opt = u => [...cen].filter(([k, c]) => c.u === u && !ofCod.has(k)).sort((a, b) => (a[1].l + a[1].n).localeCompare(b[1].l + b[1].n)).map(([k, c]) => `<option value="${esc(k)}">${esc(c.l)} · ${esc(c.n)}</option>`).join("");
+    const optO = [...ofCod].sort(distCmp).map(([k, c]) => `<option value="${esc(k)}">${esc(c.l)} · ${esc(c.n)}${c.k > 1 ? " (" + c.k + " plazas)" : ""}${esc(distTxt(k))}</option>`).join("");
+    const opt = u => [...cen].filter(([k, c]) => c.u === u && !ofCod.has(k)).sort(distCmp).map(([k, c]) => `<option value="${esc(k)}">${esc(c.l)} · ${esc(c.n)}${esc(distTxt(k))}</option>`).join("");
     html += `<label>Centro<select data-lista="${r.lista_id}" style="max-width:100%"><option value="">Elige un centro…</option>${optO ? `<optgroup label="📣 Se ofertan en la próxima adjudicación (${fmtF(OFER.fecha)})">${optO}</optgroup>` : ""}<optgroup label="Última tanda con plazas (${fmtF(ultima)})">${opt(true)}</optgroup><optgroup label="Tandas anteriores">${opt(false)}</optgroup></select></label><div id="op-res-${r.lista_id}" style="margin-top:.6rem"></div></div>`;
   });
   $("oport-body").innerHTML = html;
@@ -1126,7 +1268,7 @@ async function oportunidades(pan, espMia) {
         cartel = gap <= 0 ? `<div class="op-b go" style="--c:var(--ok);--cb:var(--ok-bg)" role="status"><div class="k">🎯 Tu oportunidad</div><div class="h">¡Estás dentro del alcance!</div>En la última tanda con adjudicaciones en tu bolsa (${fmtF(f0)}) se llegó hasta la posición <strong>${top}</strong>. Tú estás en la <strong>${rp.posicion}</strong>.</div>`
           : `<div class="op-b ${gap / rp.posicion < 0.15 ? "go" : ""}" style="--c:var(--${gap / rp.posicion < 0.15 ? "amb" : "blu"});--cb:var(--${gap / rp.posicion < 0.15 ? "amb" : "blu"}-bg)" role="status"><div class="k">📍 Tu oportunidad</div><div class="h">${gap / rp.posicion < 0.15 ? "¡Estás muy cerca!" : "Todavía lejos por ahora"}</div><span class="n">${gap}</span> puestos te separan de hasta donde se llegó en la última tanda (posición ${top}, ${fmtF(f0)}).</div>`; }
     }
-    out.innerHTML = bannerO + cartel + (!rows.length ? "" : `<p class="note" style="margin:0 0 .4rem">Este centro ha adjudicado ${rows.length} plaza${rows.length === 1 ? "" : "s"} en esta bolsa en las últimas tandas; en ${K} tú ibas por delante.</p>
+    out.innerHTML = distLinea(sel.value) + bannerO + cartel + (!rows.length ? "" : `<p class="note" style="margin:0 0 .4rem">Este centro ha adjudicado ${rows.length} plaza${rows.length === 1 ? "" : "s"} en esta bolsa en las últimas tandas; en ${K} tú ibas por delante.</p>
       <div class="scroll"><table><thead><tr><th>Fecha</th><th>Plaza</th><th class="n">Puesto del adjudicado</th><th class="n">Tu puesto ese día</th><th>Resultado</th></tr></thead><tbody>${rows.map(o => {
         const res = o.mi_posicion == null ? "Sin dato" : o.mi_posicion < o.posicion_adj ? `<span class="tag">Ibas por delante</span> (${o.posicion_adj - o.mi_posicion} puestos)` : o.mi_posicion === o.posicion_adj ? "Eras tú" : `Iba por delante de ti (${o.mi_posicion - o.posicion_adj} puestos)`;
         return `<tr><td>${fmtF(o.fecha)}</td><td>${o.plaza_tipo === "vacante" ? "Vacante" : "Sustitución"}${o.especialidad_codigo && esMae ? " · esp. " + esc(o.especialidad_codigo) : ""}</td><td class="n">${o.posicion_adj}</td><td class="n">${o.mi_posicion ?? "—"}</td><td>${res}</td></tr>`;
@@ -1167,7 +1309,7 @@ function wowPintar(pan, espMia, por) {
   else if (cercas.length) { k = "🔥 Estás muy cerca"; h = `Estás muy cerca en ${pl(np(cercas))} que se ofertan el ${fmtF(OFER.fecha)}`; cls = " cerca"; }
   else { k = "📣 Plazas ofertadas en tus bolsas"; h = `Se ofertan ${pl(np(C))} en tus bolsas el ${fmtF(OFER.fecha)}`; cls = " lejos"; }
   box.className = "wow" + cls;
-  box.innerHTML = `<div class="k">${k}</div><div class="h">${esc(h)}</div>` + C.slice(0, 3).map((x, i) => `<button class="li" data-i="${i}"><span><b>${esc(x.c.l)} · ${esc(x.c.n)}${x.c.k > 1 ? " (" + x.c.k + " plazas)" : ""}</b><small>${esc(x.txt)}</small></span><span class="go">›</span></button>`).join("") + '<small style="display:block;margin-top:.6rem;opacity:.85">Orientativo: se basa en quién se llevó plazas de estos centros en tandas anteriores. No garantiza ninguna plaza.</small>';
+  box.innerHTML = `<div class="k">${k}</div><div class="h">${esc(h)}</div>` + C.slice(0, 3).map((x, i) => `<button class="li" data-i="${i}"><span><b>${esc(x.c.l)} · ${esc(x.c.n)}${x.c.k > 1 ? " (" + x.c.k + " plazas)" : ""}</b><small>${esc(x.txt)}${esc(distTxt(x.cod))}</small></span><span class="go">›</span></button>`).join("") + '<small style="display:block;margin-top:.6rem;opacity:.85">Orientativo: se basa en quién se llevó plazas de estos centros en tandas anteriores. No garantiza ninguna plaza.</small>';
   box.hidden = false;
   box.querySelectorAll(".li").forEach(b => b.onclick = () => {
     const x = C[+b.dataset.i], sel = $("oport-body").querySelector(`select[data-lista="${x.r.lista_id}"]`); if (!sel) return;
@@ -1197,7 +1339,7 @@ async function pedirEsp(forzar) {
 async function situacion() {
   $("s-cards").innerHTML = '<div class="panel">Cargando…</div>'; $("u-body").innerHTML = ""; $("h-body").innerHTML = "";
   const [a, b] = await Promise.all([sb.rpc("mi_situacion"), sb.rpc("mi_panorama")]);
-  if ((a.error || b.error || {}).message === "sin_acceso") { pintarAcceso({ cobro_activo: true, activo: false, precio: "9.99" }); $("analisis").hidden = true; return; }
+  if ((a.error || b.error || {}).message === "sin_acceso") { pintarAcceso({ cobro_activo: true, activo: false, precio: "7.49" }); $("analisis").hidden = true; return; }
   if (a.error || b.error) { $("s-cards").innerHTML = `<div class="panel err">${esc((a.error || b.error).message)}</div>`; return; }
   const hist = a.data || [], pan = b.data || [];
   const histDe = r => hist.filter(h => h.cuerpo === r.cuerpo && h.bolsa === r.bolsa);   // ya viene de la más reciente a la más antigua
