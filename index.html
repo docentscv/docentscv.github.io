@@ -70,6 +70,10 @@ body{padding-bottom:calc(4.9rem + env(safe-area-inset-bottom,0px));overscroll-be
 #onb .ft{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.5rem 1.4rem;max-width:30rem;width:100%;margin:0 auto}
 #onb .dots{display:flex;gap:.4rem}#onb .dots i{width:.55rem;height:.55rem;border-radius:1rem;background:var(--line);transition:all .25s}#onb .dots i.on{width:1.5rem;background:var(--accent)}
 .dist{display:inline-block;white-space:nowrap;margin-top:.15rem;padding:.05rem .5rem;border-radius:99px;background:var(--blu-bg);color:var(--blu);font-weight:700}
+.fbtn{margin:.15rem 0 0 .35rem;padding:.05rem .6rem;border-radius:99px;border:1px solid var(--amb);background:var(--amb-bg);color:var(--amb);font:700 .8rem var(--body);cursor:pointer;white-space:nowrap}
+.fbtn.on{background:var(--amb);color:#fff}
+.mapa{height:min(62vh,430px);border-radius:12px;border:1px solid var(--line);margin:.5rem 0}
+.toast{position:fixed;left:50%;bottom:1.2rem;transform:translateX(-50%);max-width:min(92vw,28rem);background:#1a2433;color:#fff;padding:.7rem 1rem;border-radius:10px;font-size:.92rem;z-index:9999;box-shadow:0 6px 20px #0005}
 .dbtn{margin-top:.15rem;padding:.05rem .6rem;border-radius:99px;border:1px solid var(--blu);background:var(--blu-bg);color:var(--blu);font:700 .8rem var(--body);cursor:pointer;white-space:nowrap}
 @media (prefers-reduced-motion:reduce){.view:not([hidden]),#onb .art,.skel::after{animation:none}}
 /* ---------- pulido: inicio y Mi apartado ---------- */
@@ -264,6 +268,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
         <label>Localidad o centro <input id="of-q" type="search" placeholder="Filtrar"></label>
       </div>
       <p class="note" id="of-info" style="margin:.2rem 0 .5rem"></p>
+      <p style="margin:.2rem 0"><button type="button" class="dbtn" id="of-mapbtn">🗺️ Ver en el mapa</button></p><div id="of-map" class="mapa" hidden></div>
       <div id="of-body"></div>
     </details>
 
@@ -277,6 +282,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
         <label>Localidad o centro <input id="dc-q" type="search" placeholder="Filtrar"></label>
       </div>
       <p class="note" id="dc-info" style="margin:.2rem 0 .5rem"></p>
+      <p style="margin:.2rem 0"><button type="button" class="dbtn" id="dc-mapbtn">🗺️ Ver en el mapa</button></p><div id="dc-map" class="mapa" hidden></div>
       <div id="dc-body"></div>
     </details>
 
@@ -353,6 +359,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
     <div id="acc-box"></div>
     <div id="dist-card"></div>
     <div id="ref-top"></div>
+    <div id="fav-card"></div>
     <div id="analisis" hidden>
       <p class="note" id="s-aviso" style="margin:0 0 .6rem"></p>
       <div id="wow" hidden></div>
@@ -664,12 +671,131 @@ const distLinea = cod => { const d = distInfo(cod); return d ? `<p style="margin
 const distCmp = (a, b) => { if (DOM) { const x = distInfo(a[0]), y = distInfo(b[0]); const d = (x ? x.km : 1e9) - (y ? y.km : 1e9); if (d) return d; } return (a[1].l + a[1].n).localeCompare(b[1].l + b[1].n); };
 /* En Consulta solo se ve el icono: al pulsarlo hay que tener cuenta (y domicilio) para ver el resultado */
 const distBtn = r => r.centro_codigo ? `<br><button type="button" class="dbtn" data-c="${esc(r.centro_codigo)}" title="Ver la distancia desde tu domicilio">📍 Distancia</button>` : "";
-document.addEventListener("click", async ev => {
-  const b = ev.target.closest(".dbtn"); if (!b || !sb) return;
+async function distPulsar(cod) {
+  if (!sb) return;
   const { data: { session } } = await sb.auth.getSession();
   if (!session) { show("auth"); authMode("registro"); $("au-msg").textContent = "Crea tu cuenta gratis para ver la distancia y el tiempo hasta cada centro."; return; }
-  LAST_DIST = b.dataset.c; CONS_Y = window.scrollY; show("apartado");      // la distancia se ve en Mi apartado (con acceso); sin acceso, ahí mismo se ofrece pagar o invitar
-});
+  LAST_DIST = cod; CONS_Y = window.scrollY; show("apartado");      // la distancia se ve en Mi apartado (con acceso); sin acceso, ahí mismo se ofrece pagar o invitar
+}
+document.addEventListener("click", ev => { const b = ev.target.closest(".dbtn[data-c]"); if (b) distPulsar(b.dataset.c); });
+
+/* ---------- avisos breves ---------- */
+function toast(t) { const d = document.createElement("div"); d.className = "toast"; d.setAttribute("role", "status"); d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 4200); }
+
+/* ---------- favoritos: centros que sigo y plazas de difícil cobertura que sigo ---------- */
+let FAV = new Set(), SEG = new Set();
+const segKey = r => r.especialidad_codigo + "|" + r.codigo_plaza;
+async function favCargar() {
+  FAV = new Set(); SEG = new Set();
+  try {
+    if (!sb) return; const { data: { session } } = await sb.auth.getSession(); if (!session) return;
+    const [a, b] = await Promise.all([sb.rpc("mis_favoritos"), sb.rpc("mis_dificil_seguidas")]);
+    (a.data || []).forEach(c => FAV.add(c)); (b.data || []).forEach(x => SEG.add(x.especialidad_codigo + "|" + x.codigo_plaza));
+  } catch (e) {}
+}
+const favBtn = r => r.centro_codigo ? `<button type="button" class="fbtn${FAV.has(r.centro_codigo) ? " on" : ""}" data-fc="${esc(r.centro_codigo)}" title="Avisarme cuando salgan plazas en este centro">${FAV.has(r.centro_codigo) ? "⭐ Favorito" : "☆ Favorito"}</button>` : "";
+const segBtn = r => r.codigo_plaza ? `<button type="button" class="fbtn${SEG.has(segKey(r)) ? " on" : ""}" data-sp="${esc(segKey(r))}" data-sc="${esc(r.centro_codigo || "")}" data-sb="${esc(r.cuerpo || "")}" title="Seguir esta plaza">${SEG.has(segKey(r)) ? "📌 Sigo esta plaza" : "📌 Seguir"}</button>` : "";
+function favRepintar() {
+  document.querySelectorAll(".fbtn[data-fc]").forEach(b => { const on = FAV.has(b.dataset.fc); b.classList.toggle("on", on); b.textContent = on ? "⭐ Favorito" : "☆ Favorito"; });
+  document.querySelectorAll(".fbtn[data-sp]").forEach(b => { const on = SEG.has(b.dataset.sp); b.classList.toggle("on", on); b.textContent = on ? "📌 Sigo esta plaza" : "📌 Seguir"; });
+}
+const FAV_ERR = { limite: "Has llegado al máximo de favoritos.", no_existe: "No encontramos ese centro.", sin_acceso: "" };
+async function favPulsar(b) {
+  if (!sb) return;
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { show("auth"); authMode("registro"); $("au-msg").textContent = "Crea tu cuenta gratis para guardar tus centros favoritos y recibir avisos."; return; }
+  const esFav = b.dataset.fc != null, on = !b.classList.contains("on");
+  const rpc = esFav ? await sb.rpc("fav_centro", { p_centro: b.dataset.fc, p_on: on })
+    : await sb.rpc("seguir_dificil", { p_esp: b.dataset.sp.split("|")[0], p_plaza: b.dataset.sp.split("|").slice(1).join("|"), p_centro: b.dataset.sc, p_cuerpo: b.dataset.sb, p_on: on });
+  if (rpc.data === "sin_acceso") { LAST_DIST = null; show("apartado"); return; }     // ahí se ofrece pagar o invitar
+  if (rpc.error || rpc.data !== "ok") { toast(FAV_ERR[rpc.data] || "No se pudo guardar. Inténtalo de nuevo."); return; }
+  if (esFav) on ? FAV.add(b.dataset.fc) : FAV.delete(b.dataset.fc); else on ? SEG.add(b.dataset.sp) : SEG.delete(b.dataset.sp);
+  favRepintar();
+  toast(on ? (esFav ? "Centro favorito guardado. Te avisaremos cuando salgan plazas ahí (activa las notificaciones en Mi apartado → Ajustes)." : "Plaza guardada en «Mi apartado».") : "Quitado.");
+  if (!$("v-apartado").hidden) { const q = $("fav-q") ? $("fav-q").value : ""; await favCard(ACC); if (q && $("fav-q")) { $("fav-q").value = q; $("fav-q").dispatchEvent(new Event("input")); } }
+}
+document.addEventListener("click", ev => { const b = ev.target.closest(".fbtn"); if (b) favPulsar(b); });
+
+/* Tarjeta de Mi apartado: mis centros favoritos (con lo que hay ahora) y las plazas de difícil cobertura que sigo */
+async function favCard(ac) {
+  const box = $("fav-card"); if (!box) return;
+  if (!ac || !ac.activo) { box.innerHTML = ""; return; }
+  await favCargar(); await Promise.all([cargarOfertas(), cargarDif()]); await geoCargar();
+  let seg = []; try { seg = (await sb.rpc("mis_dificil_seguidas")).data || []; } catch (e) {}
+  await cargarCentros([...FAV, ...seg.map(x => x.centro_codigo)]);
+  const of = (OFER && OFER.rows) || [], dc = (DIF && DIF.rows) || [];
+  const cuenta = (rows, cod) => { const r = rows.filter(x => x.centro_codigo === cod); const m = new Map(); r.forEach(x => m.set(x.especialidad_codigo, (m.get(x.especialidad_codigo) || 0) + 1)); return { n: r.length, txt: [...m].map(([e, n]) => esc(espNom("", e)) + (n > 1 ? " ×" + n : "")).join(", ") }; };
+  const lista = [...FAV].sort((a, b) => ((CEN[a] || {}).nombre || a).localeCompare((CEN[b] || {}).nombre || b)).map(cod => {
+    const c = CEN[cod] || {}, o = cuenta(of, cod), d = cuenta(dc, cod);
+    const hay = [o.n ? `<b>${o.n}</b> ofertada${o.n === 1 ? "" : "s"} (${fmtF(OFER.fecha)}): ${o.txt}` : "", d.n ? `<b>${d.n}</b> de difícil cobertura (${fmtF(DIF.fecha)}): ${d.txt}` : ""].filter(Boolean).join("<br>");
+    return `<div class="it"><div class="a"><b>${esc(c.nombre || cod)}</b><small>${esc(c.localidad || "")}${distTxt(cod)}<br>${hay || "Sin plazas en las últimas publicaciones."}</small></div><div class="z"><button type="button" class="fbtn on" data-fc="${esc(cod)}">⭐ Quitar</button></div></div>`;
+  }).join("");
+  const adj = DIF && DIF.adj ? DIF.adj : new Map(), vivas = new Set(dc.map(segKey));
+  const segl = seg.map(x => {
+    const c = CEN[x.centro_codigo] || {}, k = x.especialidad_codigo + "|" + x.codigo_plaza;
+    const st = adj.has(k) ? `<span style="color:var(--ok)">✔ Adjudicada (${fmtF(DIF.fecha)})</span>` : vivas.has(k) ? `Sigue publicada (${fmtF(DIF.fecha)})` : `Ya no figura en la última publicación`;
+    return `<div class="it"><div class="a"><b>${esc(c.nombre || x.centro_codigo || "Centro")}</b><small>${esc(c.localidad || "")} · ${esc(espNom("", x.especialidad_codigo))} · plaza ${esc(x.codigo_plaza)}<br>${st}</small></div><div class="z"><button type="button" class="fbtn on" data-sp="${esc(k)}" data-sc="${esc(x.centro_codigo || "")}" data-sb="${esc(x.cuerpo || "")}">📌 Quitar</button></div></div>`;
+  }).join("");
+  box.innerHTML = `<div class="panel" style="margin-top:1rem"><h2 style="margin-top:0">⭐ Mis centros favoritos</h2>
+    <p class="note" style="margin:0 0 .5rem">Te avisamos por notificación cuando salgan plazas ofertadas o de difícil cobertura en estos centros. <a href="#" id="fav-notif">Activar notificaciones</a></p>
+    <div id="fav-lista">${lista || '<p class="note" style="margin:.3rem 0">Todavía no tienes ninguno. Búscalos aquí o pulsa «☆ Favorito» en las plazas de Consulta.</p>'}</div>
+    <div class="filters" style="margin-top:.6rem"><label>Añadir un centro <input id="fav-q" type="search" placeholder="Nombre o localidad" style="min-width:min(16rem,70vw)"></label></div><div id="fav-res"></div>
+    ${segl ? `<h2 style="margin:1rem 0 .2rem">📌 Plazas de difícil cobertura que sigo</h2><div>${segl}</div>` : ""}</div>`;
+  $("fav-notif").onclick = ev => { ev.preventDefault(); $("mn-aj").click(); };
+  let t = null; $("fav-q").addEventListener("input", () => {
+    clearTimeout(t); t = setTimeout(async () => {
+      const q = $("fav-q").value.trim().replace(/[*,()]/g, " ").trim(), out = $("fav-res");
+      if (q.length < 3) { out.innerHTML = ""; return; }
+      try {
+        const cs = await getJ(`centros?select=codigo,nombre,localidad,provincia,lat,lon&or=(nombre.ilike.*${enc(q)}*,localidad.ilike.*${enc(q)}*)&order=localidad.asc&limit=12`);
+        cs.forEach(c => { if (!CEN[c.codigo]) CEN[c.codigo] = c; });
+        out.innerHTML = cs.length ? cs.map(c => `<div class="it"><div class="a"><b>${esc(c.nombre)}</b><small>${esc(c.localidad || "")}</small></div><div class="z"><button type="button" class="fbtn${FAV.has(c.codigo) ? " on" : ""}" data-fc="${esc(c.codigo)}">${FAV.has(c.codigo) ? "⭐ Favorito" : "☆ Favorito"}</button></div></div>`).join("") : '<p class="note">No encontramos ningún centro.</p>';
+      } catch (e) { out.innerHTML = '<p class="note">No se pudo buscar.</p>'; }
+    }, 350);
+  });
+}
+
+/* ---------- mapa de plazas (OpenStreetMap con Leaflet; se carga solo al pedirlo) ---------- */
+const MAPAS = {};
+function leafletCargar() {
+  if (window.L) return Promise.resolve();
+  return new Promise((ok, ko) => {
+    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"; document.head.appendChild(l);
+    const sc = document.createElement("script"); sc.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"; sc.onload = ok; sc.onerror = ko; document.head.appendChild(sc);
+  });
+}
+async function geoLocs() {
+  if (GEO) return;
+  try { const rows = await getJ("localidades_geo?select=localidad,provincia,lat,lon&lat=not.is.null&limit=2000"); GEO = new Map(rows.map(g => [g.localidad + "|" + g.provincia, g])); } catch (e) { GEO = new Map(); }
+}
+const posCentro = cod => { const c = CEN[cod] || {}; if (c.lat != null && c.lon != null) return [c.lat, c.lon]; const g = GEO && GEO.get((c.localidad || "") + "|" + (c.provincia || "")); return g && g.lat != null ? [g.lat, g.lon] : null; };
+async function mapaRefrescar(pre) {
+  const el = $(pre + "-map"); if (!el || el.hidden) return;
+  const rows = (pre === "of" ? window.__ofFil : window.__dcFil) || [];
+  try { await Promise.all([leafletCargar(), geoLocs()]); } catch (e) { el.outerHTML = '<p class="note" id="' + pre + '-map">No se pudo cargar el mapa.</p>'; return; }
+  let m = MAPAS[pre]; if (!m) { m = MAPAS[pre] = { map: L.map(el).setView([39.2, -0.6], 7), capa: L.layerGroup() }; L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "© OpenStreetMap" }).addTo(m.map); m.capa.addTo(m.map); }
+  m.capa.clearLayers();
+  const por = new Map(); rows.forEach(r => { if (!por.has(r.centro_codigo)) por.set(r.centro_codigo, []); por.get(r.centro_codigo).push(r); });
+  const pts = [];
+  por.forEach((rs, cod) => {
+    const pos = posCentro(cod); if (!pos) return; pts.push(pos);
+    const c = CEN[cod] || {}, ge = new Map(); rs.forEach(r => ge.set(r.especialidad_codigo, (ge.get(r.especialidad_codigo) || 0) + 1));
+    const html = `<b>${esc(c.nombre || cod)}</b><br>${esc(c.localidad || "")}<br>${rs.length} plaza${rs.length === 1 ? "" : "s"}: ${[...ge].map(([e, n]) => esc(espNom("", e)) + (n > 1 ? " ×" + n : "")).join(", ")}<br>`;
+    const mk = L.circleMarker(pos, { radius: 6 + Math.min(rs.length, 8), color: "#0F7B8A", weight: 2, fillColor: "#0F7B8A", fillOpacity: .55 }).addTo(m.capa);
+    mk.bindPopup(() => {
+      const d = document.createElement("div"); d.innerHTML = html + `<button type="button" class="dbtn" data-c="${esc(cod)}">📍 Distancia</button>${favBtn({ centro_codigo: cod })}`;
+      d.querySelector(".dbtn").onclick = ev => { ev.stopPropagation(); distPulsar(cod); };
+      const f = d.querySelector(".fbtn"); if (f) f.onclick = ev => { ev.stopPropagation(); favPulsar(f); };
+      return d;
+    });
+  });
+  setTimeout(() => { m.map.invalidateSize(); if (pts.length) m.map.fitBounds(L.latLngBounds(pts).pad(.15), { maxZoom: 12 }); }, 80);
+}
+["of", "dc"].forEach(pre => document.addEventListener("click", ev => {
+  const b = ev.target.closest("#" + pre + "-mapbtn"); if (!b) return;
+  const el = $(pre + "-map"); el.hidden = !el.hidden; b.textContent = el.hidden ? "🗺️ Ver en el mapa" : "🗺️ Ocultar mapa";
+  mapaRefrescar(pre);
+}));
 /* Domicilio: se convierte una sola vez en coordenadas (OpenStreetMap) y solo se guarda la ubicación aproximada, nunca la dirección escrita */
 async function geocodificarDom(calle, cp, loc) {
   const qs = []; if (calle) qs.push([`${calle}, ${cp} ${loc}, España`, true]); qs.push([`${cp} ${loc}, España`, false]);
@@ -820,7 +946,7 @@ async function cargarDif() {
     return (DIF = { fecha: f[0].fecha, rows, adj, adjN, adjB });
   } catch (e) { return (DIF = { fecha: null, rows: [] }); }
 }
-const difItem = r => `<div class="it"><div class="a"><b>${esc(r.centro || r.centro_codigo)}</b><small>${esc(r.localidad || "")}${r.req_ling ? " · req. " + esc(r.req_ling.replace(/\.$/, "")) : ""}${r.observ ? " · " + esc(r.observ) : ""}${distBtn(r)}</small></div><div class="z">${DIF && DIF.adj && DIF.adj.has(r.especialidad_codigo + "|" + r.codigo_plaza) ? '<span class="tag" style="background:var(--ok-bg);color:var(--ok)">✔ Adjudicada</span> ' : ""}<span class="tag">${r.tipo === "vacante" ? "Vacante" : "Sustitución"}</span></div></div>`;
+const difItem = r => `<div class="it"><div class="a"><b>${esc(r.centro || r.centro_codigo)}</b><small>${esc(r.localidad || "")}${r.req_ling ? " · req. " + esc(r.req_ling.replace(/\.$/, "")) : ""}${r.observ ? " · " + esc(r.observ) : ""}${distBtn(r)}${favBtn(r)}${segBtn(r)}</small></div><div class="z">${DIF && DIF.adj && DIF.adj.has(r.especialidad_codigo + "|" + r.codigo_plaza) ? '<span class="tag" style="background:var(--ok-bg);color:var(--ok)">✔ Adjudicada</span> ' : ""}<span class="tag">${r.tipo === "vacante" ? "Vacante" : "Sustitución"}</span></div></div>`;
 async function difInit() {
   const o = await cargarDif();
   if (!o.fecha) { $("dc-panel").hidden = true; return; }
@@ -841,6 +967,7 @@ function difPintar() {
   $("dc-info").innerHTML = `<strong>${fil.length}</strong> plaza${fil.length === 1 ? "" : "s"} (${nv} vacante${nv === 1 ? "" : "s"}, ${fil.length - nv} sustitucion${fil.length - nv === 1 ? "" : "es"}).`;
   if (DIF.adjN) $("dc-info").innerHTML += ` <span style="color:var(--ok)">✔ ${fil.filter(r => DIF.adj.has(r.especialidad_codigo + "|" + r.codigo_plaza)).length} ya adjudicada${fil.filter(r => DIF.adj.has(r.especialidad_codigo + "|" + r.codigo_plaza)).length === 1 ? "" : "s"}.</span>`;
   const gr = new Map(); fil.forEach(r => { if (!gr.has(r.especialidad_codigo)) gr.set(r.especialidad_codigo, []); gr.get(r.especialidad_codigo).push(r); });
+  window.__dcFil = fil; mapaRefrescar("dc");
   $("dc-body").innerHTML = fil.length ? [...gr].map(([e, rs]) => `<div class="note" style="margin:.9rem 0 .2rem"><strong>${esc(espNom("", e))}</strong> — ${rs.length} plaza${rs.length === 1 ? "" : "s"}</div>` + rs.map(difItem).join("")).join("") : '<p class="note">No hay plazas con esos filtros.</p>';
 }
 $("dc-cuerpo").addEventListener("change", () => { difEsp(); difPintar(); });
@@ -873,9 +1000,10 @@ function ofPintar() {
   const nv = fil.filter(r => r.tipo === "vacante").length;
   $("of-info").innerHTML = `<strong>${fil.length}</strong> plaza${fil.length === 1 ? "" : "s"} (${nv} vacante${nv === 1 ? "" : "s"}, ${fil.length - nv} sustitucion${fil.length - nv === 1 ? "" : "es"}). ${ofertaVigente() ? "Se adjudican el " + fmtF(OFER.fecha) + "." : "Adjudicación del " + fmtF(OFER.fecha) + "."}${OFER.version === "prov" ? " Lista provisional." : ""}`;
   const gr = new Map(); fil.forEach(r => { if (!gr.has(r.especialidad_codigo)) gr.set(r.especialidad_codigo, []); gr.get(r.especialidad_codigo).push(r); });
+  window.__ofFil = fil; mapaRefrescar("of");
   $("of-body").innerHTML = fil.length ? [...gr].map(([e, rs]) => {
     const a = alcanceUlt(e), ctx = a ? (a.p ? ` · en la última tanda (${fmtF(a.f)}) se llegó hasta la posición <strong>${a.p}</strong>` : ` · sin adjudicaciones en la última tanda (${fmtF(a.f)})`) : "";
-    return `<div class="note" style="margin:.9rem 0 .2rem"><strong>${esc(espNom("", e))}</strong> — ${rs.length} plaza${rs.length === 1 ? "" : "s"}${ctx}</div>` + rs.map(r => `<div class="it"><div class="a"><b>${esc(r.centro || r.centro_codigo)}</b><small>${esc(r.localidad || "")}${r.req_ling ? " · req. " + esc(r.req_ling.replace(/\.$/, "")) : ""}${r.observ ? " · " + esc(r.observ) : ""}${distBtn(r)}</small></div><div class="z"><span class="tag">${r.tipo === "vacante" ? "Vacante" : "Sustitución"}</span></div></div>`).join("");
+    return `<div class="note" style="margin:.9rem 0 .2rem"><strong>${esc(espNom("", e))}</strong> — ${rs.length} plaza${rs.length === 1 ? "" : "s"}${ctx}</div>` + rs.map(r => `<div class="it"><div class="a"><b>${esc(r.centro || r.centro_codigo)}</b><small>${esc(r.localidad || "")}${r.req_ling ? " · req. " + esc(r.req_ling.replace(/\.$/, "")) : ""}${r.observ ? " · " + esc(r.observ) : ""}${distBtn(r)}${favBtn(r)}</small></div><div class="z"><span class="tag">${r.tipo === "vacante" ? "Vacante" : "Sustitución"}</span></div></div>`).join("");
   }).join("") : '<p class="note">No hay plazas con esos filtros.</p>';
 }
 $("of-cuerpo").addEventListener("change", () => { ofEsp(); ofPintar(); });
@@ -892,6 +1020,7 @@ function initAuth() {
     d.textContent = error || !data ? "No hemos podido dar de baja los avisos con este enlace. Puedes desactivarlos en Mi apartado." : "Listo: ya no recibirás avisos por email. Puedes volver a activarlos en Mi apartado.";
     document.body.prepend(d); history.replaceState(null, "", location.pathname + location.search);
   });
+  sb.auth.onAuthStateChange(ev => { if (ev === "SIGNED_IN" || ev === "INITIAL_SESSION") setTimeout(() => favCargar().then(favRepintar), 0); if (ev === "SIGNED_OUT") { FAV = new Set(); SEG = new Set(); favRepintar(); } });
   sb.auth.onAuthStateChange(ev => { if (ev === "PASSWORD_RECOVERY") { RECOVERY = true; if (READY) { show("auth"); authMode("nueva"); } } });
 }
 const AU = { login: ["Entrar", "Entrar", "Crear cuenta", "registro"], registro: ["Crear cuenta", "Crear cuenta", "Ya tengo cuenta", "login"], olvido: ["Recuperar contraseña", "Enviar enlace", "Volver", "login"], nueva: ["Nueva contraseña", "Guardar contraseña", "", "login"] };
@@ -958,7 +1087,47 @@ function pintarAcceso(ac) {
     <div class="sc-p" style="--pc:var(--blu);--pb:var(--blu-bg)"><div class="t">Todo el curso</div><div class="v">${pr} €</div><div class="d">Pago único${fin ? ", con acceso hasta el " + fin : ""}. Sin renovación automática.</div></div>
     <p style="margin:1rem 0 .3rem"><button class="btn" id="pagar" style="font-size:1.1rem;padding:.7rem 1.4rem">Pagar ${pr} €</button></p>
     <p class="note" id="pagar-msg" role="status"></p></div></div>`;
-  $("pagar").onclick = () => { $("pagar-msg").textContent = "El pago estará disponible muy pronto en la app de Android."; };
+  $("pagar").onclick = () => pagarPlay(false);
+  restaurarCompra(true);
+}
+
+/* ---------- Pago con Google Play (solo dentro de la app de Android) ---------- */
+const PLAY_PRODUCTO = "curso_2026_27", PLAY_URL = "https://play.google.com/store/apps/details?id=io.github.docentscv.app";
+async function servicioPlay() {
+  if (!("getDigitalGoodsService" in window)) return null;
+  try { return await window.getDigitalGoodsService("https://play.google.com/billing"); } catch (e) { return null; }
+}
+async function verificarCompra(token) {
+  const { data: { session } } = await sb.auth.getSession(); if (!session) return { ok: false, error: "no_autenticado" };
+  const r = await fetch(SUPABASE_URL + "/functions/v1/verificar_compra", { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + session.access_token }, body: JSON.stringify({ token, productId: PLAY_PRODUCTO }) });
+  return await r.json().catch(() => ({ ok: false, error: "error_interno" }));
+}
+const PAGO_ERR = { pendiente: "Tu pago está pendiente de confirmación. Cuando Google lo confirme se activará el acceso.", anulada: "Google indica que esa compra está anulada o reembolsada.", recibo_de_otra_cuenta: "Esa compra pertenece a otra cuenta de DocentsCV.", recibo_no_valido: "Google no ha reconocido la compra. Si te han cobrado, escríbenos y lo resolvemos." };
+async function pagarPlay(auto) {
+  const msg = $("pagar-msg"), btn = $("pagar"); if (!msg) return;
+  const srv = await servicioPlay();
+  if (!srv) { msg.innerHTML = `El pago se hace desde la app de Android. <a href="${PLAY_URL}" target="_blank" rel="noopener">Abre DocentsCV en Google Play</a> e inicia sesión con la misma cuenta.`; return; }
+  btn.disabled = true; msg.textContent = "Abriendo Google Play…";
+  try {
+    const det = await srv.getDetails([PLAY_PRODUCTO]);
+    if (!det || !det.length) { msg.textContent = "El producto todavía no está disponible en Google Play. Inténtalo más tarde."; btn.disabled = false; return; }
+    const p = det[0], req = new PaymentRequest([{ supportedMethods: "https://play.google.com/billing", data: { sku: PLAY_PRODUCTO } }], { total: { label: "DocentsCV · curso completo", amount: { currency: p.price.currency, value: p.price.value } } });
+    const r = await req.show(); msg.textContent = "Comprobando el pago…";
+    const v = await verificarCompra(r.details.purchaseToken);
+    await r.complete(v.ok ? "success" : "fail");
+    if (v.ok) { msg.textContent = "¡Pago correcto! Ya tienes acceso."; setTimeout(() => renderApartado(), 800); }
+    else { msg.textContent = PAGO_ERR[v.error] || "No hemos podido confirmar el pago. Inténtalo de nuevo o escríbenos."; btn.disabled = false; }
+  } catch (e) {
+    msg.textContent = (e && e.name === "AbortError") ? "Pago cancelado." : "No se pudo completar el pago. Inténtalo de nuevo."; btn.disabled = false;
+  }
+}
+/* Si ya pagó (otro móvil, reinstalación…) se recupera solo, sin pagar otra vez */
+async function restaurarCompra(silencioso) {
+  const srv = await servicioPlay(); if (!srv) return;
+  try {
+    const lista = await srv.listPurchases();
+    for (const c of lista || []) { if (c.itemId === PLAY_PRODUCTO) { const v = await verificarCompra(c.purchaseToken); if (v.ok) { renderApartado(); return; } } }
+  } catch (e) {}
 }
 
 function domInit() {
@@ -1097,7 +1266,7 @@ async function renderApartado() {
     if (data === "ok") return renderApartado();
     $("adn-msg").textContent = data === "no_encontrado" ? "No encontramos ese nombre en las listas." : "No tienes permiso.";
   };
-  const ac = await accesoInfo(); pintarAcceso(ac); ACC = ac; refTop(ac); distCard(ac);
+  const ac = await accesoInfo(); pintarAcceso(ac); ACC = ac; refTop(ac); distCard(ac); favCard(ac);
   if (!ac.activo) { $("analisis").hidden = true; return; }
   $("analisis").hidden = false;
   situacion();
