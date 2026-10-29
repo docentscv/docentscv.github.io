@@ -250,6 +250,9 @@ details.panel[open]>summary{margin-bottom:.8rem}
     <h1>Consulta</h1>
     <div class="hero" id="hero"><div class="skel sk-hero" style="background:rgba(255,255,255,.18)"></div></div>
 
+    <div class="sc" id="ref-cons" style="--c:var(--ok);--cb:var(--ok-bg);margin:1rem 0"><div class="sc-st"><i>🎁</i><div>Invita a tus compañeros y consigue la app gratis<small>Si 3 personas se registran con tu código y pagan, tu curso es gratis. Con los 7 días de prueba tienes tiempo de sobra para invitar a todos los que puedas.</small></div></div>
+      <div class="sc-b"><button class="btn" id="ref-cons-go">Quiero mi código</button></div></div>
+
     <div class="hero hero-of" id="of-hero" hidden></div>
 
     <details class="panel" id="of-panel" hidden>
@@ -348,6 +351,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
       <div class="menu" id="menu-us" hidden><div class="em" id="who"></div><button id="ad-go" hidden>Administración</button><button id="mn-aj">⚙️ Ajustes y avisos</button><button id="mn-del">Eliminar mi cuenta</button><button id="logout">Salir</button></div></div>
     <div class="hola" id="perfil"></div>
     <div id="acc-box"></div>
+    <div id="ref-top"></div>
     <div id="analisis" hidden>
       <p class="note" id="s-aviso" style="margin:0 0 .6rem"></p>
       <div id="wow" hidden></div>
@@ -961,18 +965,35 @@ function domInit() {
   $("dom-del").onclick = async () => { await sb.rpc("borrar_domicilio"); DOM = null; $("dom-msg").textContent = "Domicilio borrado."; pint(); situacion(); };
 }
 const REF_ERR = { no_existe: "Ese código no existe. Revísalo.", propio: "No puedes usar tu propio código.", ya_usado: "Ya has usado un código de invitación.", circular: "Esa persona se registró con tu código, así que no puede contar.", caducado: "El código solo se puede usar durante los primeros 30 días de tu cuenta." };
+const REFWEB = "https://docentscv.github.io/";
+function refLinks(cod) {
+  const txt = `Estoy usando DocentsCV para seguir las adjudicaciones de interinos de la Comunitat Valenciana. Entra en ${REFWEB}, crea tu cuenta y pon mi código de invitación: ${cod}`;
+  return { txt, wa: "https://wa.me/?text=" + encodeURIComponent(txt), tg: "https://t.me/share/url?url=" + encodeURIComponent(REFWEB) + "&text=" + encodeURIComponent(txt.replace(REFWEB, "").replace(/\s+/g, " ").trim()) };
+}
+/* Tarjeta destacada en Mi apartado (junto al nombre y a los días de prueba) */
+async function refTop(ac) {
+  const box = $("ref-top"); if (!box) return; box.innerHTML = "";
+  let data; try { data = (await sb.rpc("mi_referidos")).data; } catch (e) {} if (!data || data.gratis) return;
+  const l = refLinks(data.codigo), n = ac && ac.cobro_activo && ac.en_prueba ? ac.dias_restantes : null;
+  box.innerHTML = `<div class="sc" style="--c:var(--ok);--cb:var(--ok-bg);margin-top:1rem"><div class="sc-st"><i>🎁</i><div>${n != null ? "Te " + (n === 1 ? "queda 1 día" : "quedan " + n + " días") + " de prueba: ¡invita a tus compañeros!" : "Invita a tus compañeros y consigue la app gratis"}<small>Si 3 personas se registran con tu código y pagan, tu curso es gratis. Llevas <b>${data.pagados} de ${data.necesarios}</b>.</small></div></div>
+    <div class="sc-b"><div class="filters"><a class="btn" href="${l.wa}" target="_blank" rel="noopener" style="text-decoration:none;background:#1f9d55">WhatsApp</a><a class="btn" href="${l.tg}" target="_blank" rel="noopener" style="text-decoration:none;background:#2a8fd4">Telegram</a><button class="link" id="rt-mas">Ver mi código</button></div></div></div>`;
+  $("rt-mas").onclick = () => cfgAbrir("ajustes");
+}
+$("ref-cons-go").onclick = async () => {
+  if (!sb) return; const { data: { session } } = await sb.auth.getSession();
+  if (!session) { show("auth"); authMode("registro"); $("au-msg").textContent = "Crea tu cuenta gratis: tendrás 7 días de prueba y tu código para invitar."; return; }
+  show("apartado"); setTimeout(() => cfgAbrir("ajustes"), 1200);
+};
 async function refInit() {
   const body = $("ref-body"); if (!body) return;
   const { data, error } = await sb.rpc("mi_referidos");
   if (error || !data) { body.textContent = "No disponible en este momento."; return; }
-  const txt = `Estoy usando DocentsCV para seguir las adjudicaciones de interinos de la Comunitat Valenciana. Entra en https://docentscv.github.io/, crea tu cuenta y pon mi código de invitación: ${data.codigo}`;
+  const { txt } = refLinks(data.codigo);
   body.innerHTML = `<div style="font:800 1.4rem var(--display);letter-spacing:.04em;margin:.2rem 0">${esc(data.codigo)}</div>
     <p style="margin:.2rem 0 .5rem">Invitados: <b>${data.invitados}</b> · han pagado: <b>${data.pagados} de ${data.necesarios}</b>${data.gratis ? " · 🎉 ¡Conseguido! Tienes la app gratis este curso." : ""}</p>
     <div class="filters"><a class="btn" id="ref-wa" target="_blank" rel="noopener" style="text-decoration:none;background:#1f9d55">WhatsApp</a><a class="btn" id="ref-tg" target="_blank" rel="noopener" style="text-decoration:none;background:#2a8fd4">Telegram</a><button class="btn" id="ref-share" hidden>Otras apps…</button><button class="link" id="ref-copy">Copiar mensaje</button></div>
     ${data.usado ? "" : '<div class="filters" style="margin-top:.6rem"><label>¿Te invitó alguien? Su código <input id="ref-in" type="text" placeholder="DCV-XXXXX" maxlength="12" style="text-transform:uppercase;width:9rem"></label><button class="btn" id="ref-use">Usar código</button></div>'}`;
-  const web = "https://docentscv.github.io/";
-  $("ref-wa").href = "https://wa.me/?text=" + encodeURIComponent(txt);
-  $("ref-tg").href = "https://t.me/share/url?url=" + encodeURIComponent(web) + "&text=" + encodeURIComponent(txt.replace(web, "").replace(/\s+/g, " ").trim());
+  const lk = refLinks(data.codigo); $("ref-wa").href = lk.wa; $("ref-tg").href = lk.tg;
   if (navigator.share) { $("ref-share").hidden = false; $("ref-share").onclick = async () => { try { await navigator.share({ text: txt }); } catch (e) {} }; }
   $("ref-copy").onclick = async () => { try { await navigator.clipboard.writeText(txt); $("ref-msg").textContent = "Mensaje copiado: pégalo donde quieras."; } catch (e) { $("ref-msg").textContent = txt; } };
   if ($("ref-use")) $("ref-use").onclick = async () => {
@@ -1053,7 +1074,7 @@ async function renderApartado() {
     if (data === "ok") return renderApartado();
     $("adn-msg").textContent = data === "no_encontrado" ? "No encontramos ese nombre en las listas." : "No tienes permiso.";
   };
-  const ac = await accesoInfo(); pintarAcceso(ac);
+  const ac = await accesoInfo(); pintarAcceso(ac); refTop(ac);
   if (!ac.activo) { $("analisis").hidden = true; return; }
   $("analisis").hidden = false;
   situacion();
