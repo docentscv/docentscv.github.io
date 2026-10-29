@@ -74,6 +74,7 @@ body{padding-bottom:calc(4.9rem + env(safe-area-inset-bottom,0px));overscroll-be
 .fbtn.on{background:var(--amb);color:#fff}
 .mapa{height:min(62vh,430px);border-radius:12px;border:1px solid var(--line);margin:.5rem 0}
 .toast{position:fixed;left:50%;bottom:1.2rem;transform:translateX(-50%);max-width:min(92vw,28rem);background:#1a2433;color:#fff;padding:.7rem 1rem;border-radius:10px;font-size:.92rem;z-index:9999;box-shadow:0 6px 20px #0005}
+.au-gate{margin:0 0 1rem;padding:.9rem 1rem;border-radius:12px;background:var(--amb-bg);border:2px solid var(--amb);color:var(--ink,#1a2433);font:700 1.15rem/1.35 var(--body)}
 .dbtn{margin-top:.15rem;padding:.05rem .6rem;border-radius:99px;border:1px solid var(--blu);background:var(--blu-bg);color:var(--blu);font:700 .8rem var(--body);cursor:pointer;white-space:nowrap}
 @media (prefers-reduced-motion:reduce){.view:not([hidden]),#onb .art,.skel::after{animation:none}}
 /* ---------- pulido: inicio y Mi apartado ---------- */
@@ -339,6 +340,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
     <div class="top"><div class="brand">Docents<b>CV</b></div></div>
     <h1 id="au-title">Entrar</h1>
     <div class="panel" style="max-width:26rem">
+      <p class="au-gate" id="au-gate" role="status" hidden></p>
       <div style="display:flex;flex-direction:column;gap:.75rem">
         <label id="au-l-mail">Correo electrónico <input id="au-mail" type="email" autocomplete="email"></label>
         <label id="au-l-pass">Contraseña <input id="au-pass" type="password" autocomplete="current-password" placeholder="Mínimo 8 caracteres"></label>
@@ -674,7 +676,7 @@ const distBtn = r => r.centro_codigo ? `<br><button type="button" class="dbtn" d
 async function distPulsar(cod) {
   if (!sb) return;
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) { show("auth"); authMode("registro"); $("au-msg").textContent = "Crea tu cuenta gratis para ver la distancia y el tiempo hasta cada centro."; return; }
+  if (!session) { show("auth"); authMode("registro"); authAviso("Crea tu cuenta gratis para ver la distancia y el tiempo hasta cada centro."); return; }
   LAST_DIST = cod; CONS_Y = window.scrollY; show("apartado");      // la distancia se ve en Mi apartado (con acceso); sin acceso, ahí mismo se ofrece pagar o invitar
 }
 document.addEventListener("click", ev => { const b = ev.target.closest(".dbtn[data-c]"); if (b) distPulsar(b.dataset.c); });
@@ -703,7 +705,7 @@ const FAV_ERR = { limite: "Has llegado al máximo de favoritos.", no_existe: "No
 async function favPulsar(b) {
   if (!sb) return;
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) { show("auth"); authMode("registro"); $("au-msg").textContent = "🔒 Para acceder al mapa y a los favoritos tienes que registrarte. Es gratis y solo te llevará un minuto."; return; }
+  if (!session) { show("auth"); authMode("registro"); authAviso("🔒 Para acceder al mapa y a los favoritos tienes que registrarte. Es gratis y solo te llevará un minuto."); return; }
   const esFav = b.dataset.fc != null, on = !b.classList.contains("on");
   const rpc = esFav ? await sb.rpc("fav_centro", { p_centro: b.dataset.fc, p_on: on })
     : await sb.rpc("seguir_dificil", { p_esp: b.dataset.sp.split("|")[0], p_plaza: b.dataset.sp.split("|").slice(1).join("|"), p_centro: b.dataset.sc, p_cuerpo: b.dataset.sb, p_on: on });
@@ -796,7 +798,7 @@ async function mapaRefrescar(pre) {
   const el = $(pre + "-map");
   if (el.hidden) {      // el mapa es solo para personas con cuenta
     let ses = null; try { ses = sb ? (await sb.auth.getSession()).data.session : null; } catch (e) {}
-    if (!ses) { show("auth"); authMode("registro"); $("au-msg").textContent = "🔒 Para acceder al mapa y a los favoritos tienes que registrarte. Es gratis y solo te llevará un minuto."; return; }
+    if (!ses) { show("auth"); authMode("registro"); authAviso("🔒 Para acceder al mapa y a los favoritos tienes que registrarte. Es gratis y solo te llevará un minuto."); return; }
   } el.hidden = !el.hidden; b.textContent = el.hidden ? "🗺️ Ver en el mapa" : "🗺️ Ocultar mapa";
   mapaRefrescar(pre);
 }));
@@ -1028,12 +1030,13 @@ function initAuth() {
   sb.auth.onAuthStateChange(ev => { if (ev === "PASSWORD_RECOVERY") { RECOVERY = true; if (READY) { show("auth"); authMode("nueva"); } } });
 }
 const AU = { login: ["Entrar", "Entrar", "Crear cuenta", "registro"], registro: ["Crear cuenta", "Crear cuenta", "Ya tengo cuenta", "login"], olvido: ["Recuperar contraseña", "Enviar enlace", "Volver", "login"], nueva: ["Nueva contraseña", "Guardar contraseña", "", "login"] };
+function authAviso(t) { const g = $("au-gate"); g.textContent = t; g.hidden = false; }
 function authMode(m) {
   AUTH_MODE = m; const a = AU[m];
   $("au-title").textContent = a[0]; $("au-go").textContent = a[1];
   $("au-alt").textContent = a[2]; $("au-alt").hidden = !a[2]; $("au-alt").dataset.m = a[3];
   $("au-l-mail").hidden = m === "nueva"; $("au-l-ok").hidden = m !== "registro"; $("au-l-pass").hidden = m === "olvido";
-  $("au-forgot").hidden = m !== "login"; $("au-msg").textContent = "";
+  $("au-forgot").hidden = m !== "login"; $("au-msg").textContent = ""; $("au-gate").hidden = true;
   $("au-pass").autocomplete = m === "login" ? "current-password" : "new-password";
 }
 const errEs = e => /invalid login/i.test(e.message) ? "Correo o contraseña incorrectos." : /not confirmed/i.test(e.message) ? "Aún no has confirmado tu correo. Revisa tu bandeja de entrada." : /rate limit|too many/i.test(e.message) ? "Demasiados intentos. Espera unos minutos." : e.message;
@@ -1177,7 +1180,7 @@ async function refTop(ac) {
 }
 $("ref-cons-go").onclick = async () => {
   if (!sb) return; const { data: { session } } = await sb.auth.getSession();
-  if (!session) { show("auth"); authMode("registro"); $("au-msg").textContent = "Crea tu cuenta gratis: tendrás 7 días de prueba y tu código para invitar."; return; }
+  if (!session) { show("auth"); authMode("registro"); authAviso("Crea tu cuenta gratis: tendrás 7 días de prueba y tu código para invitar."); return; }
   show("apartado"); setTimeout(() => cfgAbrir("ajustes"), 1200);
 };
 async function refInit() {
