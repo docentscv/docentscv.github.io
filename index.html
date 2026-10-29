@@ -628,13 +628,14 @@ async function cargarCentros(codes) {
   const need = [...new Set(codes.filter(c => c && !CEN[c]))];
   for (let i = 0; i < need.length; i += 150) {
     const ids = need.slice(i, i + 150).map(enc).join(",");
-    let r; try { r = await getJ(`centros?select=codigo,nombre,localidad,provincia,lat,lon&codigo=in.(${ids})&limit=1000`); }
-    catch (e) { r = await getJ(`centros?select=codigo,nombre,localidad,provincia&codigo=in.(${ids})&limit=1000`); }
+    let r; try { r = await getJ(`centros?select=codigo,nombre,localidad,provincia,lat,lon,direccion,cp&codigo=in.(${ids})&limit=1000`); }
+    catch (e) { try { r = await getJ(`centros?select=codigo,nombre,localidad,provincia,lat,lon&codigo=in.(${ids})&limit=1000`); }
+      catch (e2) { r = await getJ(`centros?select=codigo,nombre,localidad,provincia&codigo=in.(${ids})&limit=1000`); } }
     r.forEach(c => CEN[c.codigo] = c);
   }
 }
 /* ---------- distancia a los centros: solo para quien tiene cuenta y ha indicado su domicilio ---------- */
-let GEO = null, DOM = null, LAST_DIST = null, ACC = null;      // GEO: coordenadas de las localidades (respaldo) · DOM: ubicación aproximada del usuario
+let GEO = null, DOM = null, LAST_DIST = null, ACC = null, CONS_Y = 0;      // GEO: coordenadas de las localidades (respaldo) · DOM: ubicación aproximada del usuario
 function kmRecto(a, b) { const R = 6371, t = x => x * Math.PI / 180, dl = t(b.lat - a.lat), dn = t(b.lon - a.lon), h = Math.sin(dl / 2) ** 2 + Math.cos(t(a.lat)) * Math.cos(t(b.lat)) * Math.sin(dn / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); }
 async function geoCargar() {
   DOM = null;
@@ -652,8 +653,14 @@ function distInfo(cod) {
   const hm = min >= 60 ? Math.floor(min / 60) + " h" + (min % 60 ? " " + (min % 60) + " min" : "") : min + " min";
   return { km, min, txt: km < 1 ? "A menos de 1 km" : "≈ " + Math.round(km) + " km · " + hm };
 }
+function mapsUrl(cod) {      // ruta en Google Maps desde tu domicilio (ubicación aproximada) hasta el centro, buscado por nombre y dirección
+  const c = CEN[cod] || {}; if (!DOM) return "";
+  const dest = [c.nombre, c.direccion, ((c.cp || "") + " " + (c.localidad || "")).trim(), "España"].filter(Boolean).join(", ");
+  return "https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=" + encodeURIComponent(DOM.lat + "," + DOM.lon) + "&destination=" + encodeURIComponent(dest);
+}
+const mapsLink = cod => mapsUrl(cod) ? `<a href="${mapsUrl(cod)}" target="_blank" rel="noopener" class="btn" style="text-decoration:none;display:inline-block;margin:.2rem .4rem .2rem 0">🗺️ Ver ruta en Google Maps</a>` : "";
 const distTxt = cod => { const d = distInfo(cod); return d ? " · 📍 " + d.txt : ""; };
-const distLinea = cod => { const d = distInfo(cod); return d ? `<p style="margin:.2rem 0 .5rem"><span class="dist" title="Distancia aproximada por carretera desde tu domicilio">📍 ${d.txt}</span></p>` : ""; };
+const distLinea = cod => { const d = distInfo(cod); return d ? `<p style="margin:.2rem 0 .5rem"><span class="dist" title="Distancia aproximada por carretera desde tu domicilio">📍 ${d.txt}</span> <a href="${mapsUrl(cod)}" target="_blank" rel="noopener" style="font-size:.85rem;white-space:nowrap">🗺️ Ver ruta en Maps</a></p>` : ""; };
 const distCmp = (a, b) => { if (DOM) { const x = distInfo(a[0]), y = distInfo(b[0]); const d = (x ? x.km : 1e9) - (y ? y.km : 1e9); if (d) return d; } return (a[1].l + a[1].n).localeCompare(b[1].l + b[1].n); };
 /* En Consulta solo se ve el icono: al pulsarlo hay que tener cuenta (y domicilio) para ver el resultado */
 const distBtn = r => r.centro_codigo ? `<br><button type="button" class="dbtn" data-c="${esc(r.centro_codigo)}" title="Ver la distancia desde tu domicilio">📍 Distancia</button>` : "";
@@ -661,7 +668,7 @@ document.addEventListener("click", async ev => {
   const b = ev.target.closest(".dbtn"); if (!b || !sb) return;
   const { data: { session } } = await sb.auth.getSession();
   if (!session) { show("auth"); authMode("registro"); $("au-msg").textContent = "Crea tu cuenta gratis para ver la distancia y el tiempo hasta cada centro."; return; }
-  LAST_DIST = b.dataset.c; show("apartado");      // la distancia se ve en Mi apartado (con acceso); sin acceso, ahí mismo se ofrece pagar o invitar
+  LAST_DIST = b.dataset.c; CONS_Y = window.scrollY; show("apartado");      // la distancia se ve en Mi apartado (con acceso); sin acceso, ahí mismo se ofrece pagar o invitar
 });
 /* Domicilio: se convierte una sola vez en coordenadas (OpenStreetMap) y solo se guarda la ubicación aproximada, nunca la dirección escrita */
 async function geocodificarDom(calle, cp, loc) {
@@ -981,7 +988,8 @@ async function distCard(ac) {
   else if (!DOM) { tit = "Añade tu domicilio para ver la distancia"; sub = nom; cuerpo = '<p style="margin:.2rem 0 .5rem">Así calculamos los kilómetros y el tiempo hasta este centro. Guardamos solo una ubicación aproximada.</p><button class="btn" id="dc-dom">Añadir mi domicilio</button>'; }
   else if (d) { tit = d.txt; sub = nom + " · desde tu domicilio"; }
   else { tit = "Sin datos de ubicación de este centro"; sub = nom; }
-  box.innerHTML = `<div class="sc" style="--c:var(--blu);--cb:var(--blu-bg);margin-top:1rem"><div class="sc-st"><i>📍</i><div>${esc(tit)}<small>${sub}</small></div></div><div class="sc-b">${cuerpo}<p style="margin:.4rem 0 0"><button class="link" id="dc-x">Cerrar ✕</button></p></div></div>`;
+  box.innerHTML = `<div class="sc" style="--c:var(--blu);--cb:var(--blu-bg);margin-top:1rem"><div class="sc-st"><i>📍</i><div>${esc(tit)}<small>${sub}</small></div></div><div class="sc-b">${cuerpo}${d ? `<p style="margin:.3rem 0 0">${mapsLink(cod)}</p>` : ""}<p style="margin:.4rem 0 0"><button class="btn" id="dc-back">← Volver a Consulta</button> <button class="link" id="dc-x">Cerrar ✕</button></p></div></div>`;
+  $("dc-back").onclick = () => { show("consulta"); setTimeout(() => window.scrollTo(0, CONS_Y), 250); };
   $("dc-x").onclick = () => { LAST_DIST = null; box.innerHTML = ""; };
   if ($("dc-dom")) $("dc-dom").onclick = () => cfgAbrir("ajustes");
   box.scrollIntoView({ behavior: "smooth", block: "start" });
