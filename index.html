@@ -75,6 +75,11 @@ body{padding-bottom:calc(4.9rem + env(safe-area-inset-bottom,0px));overscroll-be
 .mapa{height:min(62vh,430px);border-radius:12px;border:1px solid var(--line);margin:.5rem 0}
 .toast{position:fixed;left:50%;bottom:1.2rem;transform:translateX(-50%);max-width:min(92vw,28rem);background:#1a2433;color:#fff;padding:.7rem 1rem;border-radius:10px;font-size:.92rem;z-index:9999;box-shadow:0 6px 20px #0005}
 .au-gate{margin:0 0 1rem;padding:.9rem 1rem;border-radius:12px;background:var(--amb-bg);border:2px solid var(--amb);color:var(--ink,#1a2433);font:700 1.15rem/1.35 var(--body)}
+.gbtn{display:flex;align-items:center;justify-content:center;gap:.6rem;width:100%;padding:.7rem 1rem;border-radius:10px;border:1px solid #747775;background:#fff;color:#1f1f1f;font:600 1rem var(--body);cursor:pointer}
+.gbtn:hover{background:#f6f8fc}
+.au-or{display:flex;align-items:center;gap:.6rem;color:var(--muted);font-size:.85rem;margin:.2rem 0}.au-or:before,.au-or:after{content:"";flex:1;height:1px;background:var(--line)}
+#msg-dlg{border:0;border-radius:14px;padding:1.1rem;width:min(92vw,30rem);box-shadow:0 10px 40px #0006}#msg-dlg::backdrop{background:#0008}
+#msg-dlg label{display:flex;flex-direction:column;gap:.25rem;margin:.6rem 0;font-size:.92rem}#msg-dlg textarea{min-height:7rem;font:inherit;padding:.5rem;border-radius:8px;border:1px solid var(--line)}
 .dbtn{margin-top:.15rem;padding:.05rem .6rem;border-radius:99px;border:1px solid var(--blu);background:var(--blu-bg);color:var(--blu);font:700 .8rem var(--body);cursor:pointer;white-space:nowrap}
 @media (prefers-reduced-motion:reduce){.view:not([hidden]),#onb .art,.skel::after{animation:none}}
 /* ---------- pulido: inicio y Mi apartado ---------- */
@@ -341,6 +346,9 @@ details.panel[open]>summary{margin-bottom:.8rem}
     <h1 id="au-title">Entrar</h1>
     <div class="panel" style="max-width:26rem">
       <p class="au-gate" id="au-gate" role="status" hidden></p>
+      <div id="au-google-box" style="margin-bottom:.9rem"><button type="button" class="gbtn" id="au-google"><svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C.9 16.4 0 20.1 0 24s.9 7.6 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg><span id="au-google-t">Continuar con Google</span></button>
+        <p class="note" style="margin:.4rem 0 .6rem;font-size:.8rem">Al continuar con Google aceptas la <a href="privacidad.html" target="_blank" rel="noopener">política de privacidad y las condiciones de uso</a>.</p>
+        <div class="au-or">o con tu correo</div></div>
       <div style="display:flex;flex-direction:column;gap:.75rem">
         <label id="au-l-mail">Correo electrónico <input id="au-mail" type="email" autocomplete="email"></label>
         <label id="au-l-pass">Contraseña <input id="au-pass" type="password" autocomplete="current-password" placeholder="Mínimo 8 caracteres"></label>
@@ -356,7 +364,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
   <main id="v-apartado" class="view" hidden>
     <div class="top" style="position:relative"><div class="brand">Docents<b>CV</b></div>
       <button class="who-btn" id="av-btn" aria-label="Menú de usuario" aria-haspopup="true" aria-expanded="false">?</button>
-      <div class="menu" id="menu-us" hidden><div class="em" id="who"></div><button id="ad-go" hidden>Administración</button><button id="mn-aj">⚙️ Ajustes y avisos</button><button id="mn-del">Eliminar mi cuenta</button><button id="logout">Salir</button></div></div>
+      <div class="menu" id="menu-us" hidden><div class="em" id="who"></div><button id="ad-go" hidden>Administración</button><button id="mn-aj">⚙️ Ajustes y avisos</button><button id="mn-msg">💬 Sugerencias y reclamaciones</button><button id="mn-del">Eliminar mi cuenta</button><button id="logout">Salir</button></div></div>
     <div class="hola" id="perfil"></div>
     <div id="acc-box"></div>
     <div id="dist-card"></div>
@@ -377,7 +385,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
         <p class="note">Orientativo, no garantiza ni descarta ninguna plaza. «Competidores por delante» son las personas que pidieron alguna de las plazas ofertadas y no la consiguieron («No adjudicat»). Vacante: trabajarás hasta el final del curso en el mismo centro. Sustitución: la plaza es temporal, mientras su titular está de baja.</p></div>
       <div class="panel"><h2>Hasta dónde se llegó otros años</h2><div id="h-body"></div></div>
     </div>
-    <div id="cfg" hidden><div style="text-align:right"><button class="link" id="cfg-x">Cerrar ✕</button></div>
+        <div id="cfg" hidden><div style="text-align:right"><button class="link" id="cfg-x">Cerrar ✕</button></div>
     <details class="panel" id="ajustes" hidden><summary>Ajustes y avisos</summary><div id="ajustes-body" style="margin-top:.6rem"></div></details>
     <details class="panel" id="del-panel"><summary>Eliminar mi cuenta</summary>
       <p class="note" style="margin:.2rem 0 .6rem">Se borrarán de forma definitiva tu cuenta, tu correo, el nombre asociado y tus datos de acceso. No se puede deshacer. Si pagaste el curso, el pago no se devuelve.</p>
@@ -397,6 +405,12 @@ details.panel[open]>summary{margin-bottom:.8rem}
       <div class="filters"><label>Buscar <input id="us-q" type="search" placeholder="Correo o nombre"></label>
         <label>Estado <select id="us-est"><option value="">Todos</option><option value="pagado">Pagado</option><option value="en_prueba">En prueba</option><option value="prueba_terminada">Prueba terminada</option><option value="pago_caducado">Pago caducado</option><option value="registrado">Registrado (sin cobro activo)</option><option value="sin_identificar">Sin identificar</option></select></label></div>
       <div class="scroll"><table><thead><tr><th>Correo</th><th>Nombre</th><th>Alta</th><th>Estado</th><th>Pagó el</th><th>Válido hasta</th></tr></thead><tbody id="us-rows"></tbody></table></div>
+    </details>
+
+    <details class="panel" id="adm-msg">
+      <summary id="adm-msg-sum">Sugerencias y reclamaciones</summary>
+      <div id="msg-res" class="note">Cargando…</div>
+      <div id="msg-lista"></div>
     </details>
 
     <details class="panel" id="adm-cad">
@@ -451,7 +465,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
     </details>
   </main>
 
-  <footer>DocentsCV es un proyecto independiente, no vinculado a la Conselleria. Fuente: listados oficiales de adjudicación de inicio de curso. No se muestran nombres de personas. · <a href="privacidad.html" target="_blank" rel="noopener">Privacidad y condiciones</a></footer>
+  <footer>DocentsCV es un proyecto independiente, no vinculado a la Conselleria. Fuente: listados oficiales de adjudicación de inicio de curso. No se muestran nombres de personas. · <a href="privacidad.html" target="_blank" rel="noopener">Privacidad y condiciones</a> · <a href="#" id="ft-msg">💬 Sugerencias y reclamaciones</a></footer>
 </div>
 
 <nav id="tabbar" aria-label="Navegación principal" hidden><div class="in">
@@ -468,6 +482,16 @@ details.panel[open]>summary{margin-bottom:.8rem}
   </div>
   <div class="ft"><button class="link" id="onb-skip">Saltar</button><div class="dots" id="onb-dots"><i class="on"></i><i></i><i></i></div><button class="btn" id="onb-next">Siguiente</button></div>
 </div>
+<dialog id="msg-dlg">
+      <div id="msg-form"><div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0;font-size:1.25rem">💬 Sugerencias y reclamaciones</h2><button class="link" id="msg-x" type="button" aria-label="Cerrar">✕</button></div>
+        <p class="note" style="margin:.4rem 0 0">Cuéntanos qué mejorarías o qué ha ido mal. Lo leemos todo.</p>
+        <label>Tipo <select id="msg-tipo"><option value="sugerencia">💡 Sugerencia</option><option value="reclamacion">📣 Reclamación</option><option value="error">🐞 He encontrado un error</option><option value="otro">Otro</option></select></label>
+        <label>Tu mensaje <textarea id="msg-txt" maxlength="2000" placeholder="Escribe aquí…"></textarea></label>
+        <label>Tu correo (opcional, para poder responderte) <input id="msg-mail" type="email" autocomplete="email"></label>
+        <p class="note" id="msg-st" role="status" style="margin:.2rem 0"></p>
+        <button class="btn" id="msg-send" type="button">Enviar</button></div>
+      <div id="msg-ok" hidden><h2 style="margin:0 0 .4rem">¡Gracias! 🙌</h2><p style="margin:0 0 .8rem">Hemos recibido tu mensaje.</p><button class="btn" id="msg-cerrar" type="button">Cerrar</button></div>
+    </dialog>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 // ====== CONEXIÓN SUPABASE ======
@@ -501,7 +525,7 @@ function show(v) {
   tb.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
   if (v === "consulta") { consultaInit(); if (!$("rows").children.length) load(true); }
   if (v === "apartado") renderApartado();
-  if (v === "admin") { if (!ADMIN) return show("home"); adminLista(); adminUsuarios(); adminCaducadas(); }
+  if (v === "admin") { if (!ADMIN) return show("home"); adminLista(); adminUsuarios(); adminCaducadas(); adminMensajes(); }
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (b) { try { navigator.vibrate && navigator.vibrate(8); } catch (_) {} show(b.dataset.go); } });
 
@@ -1027,6 +1051,10 @@ function initAuth() {
     document.body.prepend(d); history.replaceState(null, "", location.pathname + location.search);
   });
   sb.auth.onAuthStateChange(ev => { if (ev === "SIGNED_IN" || ev === "INITIAL_SESSION") setTimeout(() => favCargar().then(favRepintar), 0); if (ev === "SIGNED_OUT") { FAV = new Set(); SEG = new Set(); favRepintar(); } });
+  sb.auth.onAuthStateChange(ev => {
+    if (ev !== "SIGNED_IN") return; let g = null; try { g = sessionStorage.getItem("dcv_goto"); sessionStorage.removeItem("dcv_goto"); } catch (e) {}
+    if (g === "apartado") { const ir = () => READY ? show("apartado") : setTimeout(ir, 300); setTimeout(ir, 300); }      // vuelta de Google: directo a Mi apartado
+  });
   sb.auth.onAuthStateChange(ev => { if (ev === "PASSWORD_RECOVERY") { RECOVERY = true; if (READY) { show("auth"); authMode("nueva"); } } });
 }
 const AU = { login: ["Entrar", "Entrar", "Crear cuenta", "registro"], registro: ["Crear cuenta", "Crear cuenta", "Ya tengo cuenta", "login"], olvido: ["Recuperar contraseña", "Enviar enlace", "Volver", "login"], nueva: ["Nueva contraseña", "Guardar contraseña", "", "login"] };
@@ -1036,7 +1064,7 @@ function authMode(m) {
   $("au-title").textContent = a[0]; $("au-go").textContent = a[1];
   $("au-alt").textContent = a[2]; $("au-alt").hidden = !a[2]; $("au-alt").dataset.m = a[3];
   $("au-l-mail").hidden = m === "nueva"; $("au-l-ok").hidden = m !== "registro"; $("au-l-pass").hidden = m === "olvido";
-  $("au-forgot").hidden = m !== "login"; $("au-msg").textContent = ""; $("au-gate").hidden = true;
+  $("au-forgot").hidden = m !== "login"; $("au-msg").textContent = ""; $("au-gate").hidden = true; $("au-google-box").hidden = !(m === "login" || m === "registro");
   $("au-pass").autocomplete = m === "login" ? "current-password" : "new-password";
 }
 const errEs = e => /invalid login/i.test(e.message) ? "Correo o contraseña incorrectos." : /not confirmed/i.test(e.message) ? "Aún no has confirmado tu correo. Revisa tu bandeja de entrada." : /rate limit|too many/i.test(e.message) ? "Demasiados intentos. Espera unos minutos." : e.message;
@@ -1056,6 +1084,14 @@ $("au-go").onclick = async () => {
     else if (AUTH_MODE === "olvido") { const { error } = await sb.auth.resetPasswordForEmail(mail, { redirectTo: back }); if (error) throw error; msg("Si el correo existe, recibirás un enlace para crear una nueva contraseña."); }
     else { const { error } = await sb.auth.updateUser({ password: pass }); if (error) throw error; RECOVERY = false; show("apartado"); }
   } catch (e) { msg("No se pudo completar: " + errEs(e)); }
+};
+$("au-google").onclick = async () => {
+  const msg = s => { $("au-msg").textContent = s; };
+  if (!sb) return msg("No se pudo cargar el sistema de cuentas. Revisa tu conexión y recarga la página.");
+  msg("Abriendo Google…");
+  try { sessionStorage.setItem("dcv_goto", "apartado"); } catch (e) {}
+  const { error } = await sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: location.origin + location.pathname, queryParams: { prompt: "select_account" } } });
+  if (error) msg("No se pudo entrar con Google: " + errEs(error));
 };
 $("del-ok").onclick = async () => {
   const msg = t => { $("del-msg").textContent = t; };
@@ -1292,6 +1328,24 @@ async function adminInit() {
 $("ad-go").onclick = () => show("admin");
 function cfgAbrir(id) { $("cfg").hidden = false; ["ajustes", "del-panel"].forEach(x => { $(x).open = (x === id); }); const t = $(id).hidden ? $("del-panel") : $(id); t.open = true; t.scrollIntoView({ behavior: "smooth", block: "start" }); }
 $("mn-aj").onclick = () => cfgAbrir("ajustes");
+async function msgAbrir() {
+  $("msg-ok").hidden = true; $("msg-form").hidden = false; $("msg-txt").value = ""; $("msg-st").textContent = ""; $("msg-send").disabled = false;
+  let em = ""; try { const { data: { session } } = await sb.auth.getSession(); em = session ? session.user.email || "" : ""; } catch (e) {}
+  $("msg-mail").value = em; if (!$("msg-dlg").open) $("msg-dlg").showModal();
+}
+$("mn-msg").onclick = () => { $("menu-us").hidden = true; msgAbrir(); };
+$("ft-msg").onclick = ev => { ev.preventDefault(); msgAbrir(); };
+$("msg-x").onclick = $("msg-cerrar").onclick = () => $("msg-dlg").close();
+$("msg-send").onclick = async () => {
+  const t = $("msg-txt").value.trim(), mail = $("msg-mail").value.trim(), st = $("msg-st");
+  if (t.length < 5) { st.textContent = "Escribe un mensaje un poco más largo."; return; }
+  if (mail && !/^\S+@\S+\.\S+$/.test(mail)) { st.textContent = "El correo no parece válido."; return; }
+  if (!sb) { st.textContent = "No se pudo conectar. Recarga la página."; return; }
+  $("msg-send").disabled = true; st.textContent = "Enviando…";
+  const { data, error } = await sb.rpc("enviar_mensaje", { p_tipo: $("msg-tipo").value, p_texto: t, p_email: mail || null });
+  if (!error && data === "ok") { $("msg-form").hidden = true; $("msg-ok").hidden = false; return; }
+  st.textContent = data === "limite" ? "Has enviado muchos mensajes seguidos. Inténtalo más tarde." : data === "corto" ? "Escribe un mensaje un poco más largo." : "No se pudo enviar. Inténtalo de nuevo."; $("msg-send").disabled = false;
+};
 $("mn-del").onclick = () => cfgAbrir("del-panel");
 $("cfg-x").onclick = () => { $("cfg").hidden = true; };
 let AD_N = 10;
@@ -1344,6 +1398,14 @@ function cadPintar() {
     adminCaducadas();
   });
 }
+async function adminMensajes() {
+  const r = await sb.rpc("admin_mensajes"); if (r.error) { $("msg-res").innerHTML = `<span class="err">${esc(r.error.message)}</span>`; return; }
+  const L = r.data || [], pend = L.filter(m => !m.resuelto).length, TN = { sugerencia: "💡 Sugerencia", reclamacion: "📣 Reclamación", error: "🐞 Error", otro: "Mensaje" };
+  $("adm-msg-sum").textContent = "Sugerencias y reclamaciones" + (pend ? " (" + pend + " sin resolver)" : "");
+  $("msg-res").textContent = L.length ? pend + " sin resolver de " + L.length + "." : "Todavía no hay mensajes.";
+  $("msg-lista").innerHTML = L.map(m => `<div class="it" style="${m.resuelto ? "opacity:.55" : ""}"><div class="a"><b>${TN[m.tipo] || "Mensaje"} · ${esc(new Date(m.creado).toLocaleString("es-ES", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }))}</b><small style="white-space:pre-wrap;color:var(--ink,inherit)">${esc(m.texto)}</small><small>${m.email ? `<a href="mailto:${esc(m.email)}?subject=${encodeURIComponent("Sobre tu mensaje en DocentsCV")}">${esc(m.email)}</a>` : "Sin correo"}</small></div><div class="z"><button type="button" class="dbtn" data-mid="${m.id}" data-r="${m.resuelto ? 0 : 1}">${m.resuelto ? "Reabrir" : "✔ Resuelto"}</button></div></div>`).join("");
+}
+document.addEventListener("click", async ev => { const b = ev.target.closest("[data-mid]"); if (!b) return; await sb.rpc("admin_mensaje_resuelto", { p_id: +b.dataset.mid, p_resuelto: b.dataset.r === "1" }); adminMensajes(); });
 async function adminCaducadas() {
   const a = await sb.rpc("admin_pruebas_caducadas"), r = await sb.rpc("admin_referidos");
   if (a.error) { $("cad-res").innerHTML = `<span class="err">${esc(a.error.message)}</span>`; return; }
