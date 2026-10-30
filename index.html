@@ -75,9 +75,6 @@ body{padding-bottom:calc(4.9rem + env(safe-area-inset-bottom,0px));overscroll-be
 .mapa{height:min(62vh,430px);border-radius:12px;border:1px solid var(--line);margin:.5rem 0}
 .toast{position:fixed;left:50%;bottom:1.2rem;transform:translateX(-50%);max-width:min(92vw,28rem);background:#1a2433;color:#fff;padding:.7rem 1rem;border-radius:10px;font-size:.92rem;z-index:9999;box-shadow:0 6px 20px #0005}
 .au-gate{margin:0 0 1rem;padding:.9rem 1rem;border-radius:12px;background:var(--amb-bg);border:2px solid var(--amb);color:var(--ink,#1a2433);font:700 1.15rem/1.35 var(--body)}
-.gbtn{display:flex;align-items:center;justify-content:center;gap:.6rem;width:100%;padding:.7rem 1rem;border-radius:10px;border:1px solid #747775;background:#fff;color:#1f1f1f;font:600 1rem var(--body);cursor:pointer}
-.gbtn:hover{background:#f6f8fc}
-.au-or{display:flex;align-items:center;gap:.6rem;color:var(--muted);font-size:.85rem;margin:.2rem 0}.au-or:before,.au-or:after{content:"";flex:1;height:1px;background:var(--line)}
 #msg-dlg{border:0;border-radius:14px;padding:1.1rem;width:min(92vw,30rem);box-shadow:0 10px 40px #0006}#msg-dlg::backdrop{background:#0008}
 #msg-dlg label{display:flex;flex-direction:column;gap:.25rem;margin:.6rem 0;font-size:.92rem}#msg-dlg textarea{min-height:7rem;font:inherit;padding:.5rem;border-radius:8px;border:1px solid var(--line)}
 .dbtn{margin-top:.15rem;padding:.05rem .6rem;border-radius:99px;border:1px solid var(--blu);background:var(--blu-bg);color:var(--blu);font:700 .8rem var(--body);cursor:pointer;white-space:nowrap}
@@ -346,9 +343,6 @@ details.panel[open]>summary{margin-bottom:.8rem}
     <h1 id="au-title">Entrar</h1>
     <div class="panel" style="max-width:26rem">
       <p class="au-gate" id="au-gate" role="status" hidden></p>
-      <div id="au-google-box" style="margin-bottom:.9rem"><button type="button" class="gbtn" id="au-google"><svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C.9 16.4 0 20.1 0 24s.9 7.6 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg><span id="au-google-t">Continuar con Google</span></button>
-        <p class="note" style="margin:.4rem 0 .6rem;font-size:.8rem">Al continuar con Google aceptas la <a href="privacidad.html" target="_blank" rel="noopener">política de privacidad y las condiciones de uso</a>.</p>
-        <div class="au-or">o con tu correo</div></div>
       <div style="display:flex;flex-direction:column;gap:.75rem">
         <label id="au-l-mail">Correo electrónico <input id="au-mail" type="email" autocomplete="email"></label>
         <label id="au-l-pass">Contraseña <input id="au-pass" type="password" autocomplete="current-password" placeholder="Mínimo 8 caracteres"></label>
@@ -585,12 +579,14 @@ async function pushInit() {
       } else {
         if ((await Notification.requestPermission()) !== "granted") { txt.textContent = "No has dado permiso. Puedes volver a intentarlo cuando quieras."; btn.disabled = false; return; }
         const k = (await sb.rpc("vapid_publica")).data; if (!k) { txt.textContent = "Las notificaciones aún no están disponibles. Inténtalo más tarde."; btn.disabled = false; return; }
-        const s = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(k) }), j = s.toJSON();
+        let s; try { s = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(k) }); }
+        catch (e1) { try { const v = await reg.pushManager.getSubscription(); if (v) await v.unsubscribe(); } catch (e2) {} await new Promise(r => setTimeout(r, 1500)); s = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(k) }); }
+        const j = s.toJSON();
         const r = await sb.rpc("guardar_push", { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth }); if (r.error || !r.data) throw new Error("no guardado");
         activo = true;
       }
       pintar();
-    } catch (e) { txt.textContent = "No se pudo completar: " + (e && e.message ? e.message : "error"); }
+    } catch (e) { const m = e && e.message ? e.message : "error"; txt.textContent = /push service|AbortError|registration failed/i.test(m + (e && e.name || "")) ? "Tu móvil no ha podido registrarse en el servicio de notificaciones de Google. Comprueba que tienes internet, que Google Play Services está actualizado y que no hay ahorro de batería o datos que bloquee la app; luego pulsa de nuevo. Si sigue igual, prueba a abrir esta web desde Chrome." : "No se pudo completar: " + m; }
     btn.disabled = false;
   };
 }
@@ -1051,10 +1047,6 @@ function initAuth() {
     document.body.prepend(d); history.replaceState(null, "", location.pathname + location.search);
   });
   sb.auth.onAuthStateChange(ev => { if (ev === "SIGNED_IN" || ev === "INITIAL_SESSION") setTimeout(() => favCargar().then(favRepintar), 0); if (ev === "SIGNED_OUT") { FAV = new Set(); SEG = new Set(); favRepintar(); } });
-  sb.auth.onAuthStateChange(ev => {
-    if (ev !== "SIGNED_IN") return; let g = null; try { g = sessionStorage.getItem("dcv_goto"); sessionStorage.removeItem("dcv_goto"); } catch (e) {}
-    if (g === "apartado") { const ir = () => READY ? show("apartado") : setTimeout(ir, 300); setTimeout(ir, 300); }      // vuelta de Google: directo a Mi apartado
-  });
   sb.auth.onAuthStateChange(ev => { if (ev === "PASSWORD_RECOVERY") { RECOVERY = true; if (READY) { show("auth"); authMode("nueva"); } } });
 }
 const AU = { login: ["Entrar", "Entrar", "Crear cuenta", "registro"], registro: ["Crear cuenta", "Crear cuenta", "Ya tengo cuenta", "login"], olvido: ["Recuperar contraseña", "Enviar enlace", "Volver", "login"], nueva: ["Nueva contraseña", "Guardar contraseña", "", "login"] };
@@ -1064,7 +1056,7 @@ function authMode(m) {
   $("au-title").textContent = a[0]; $("au-go").textContent = a[1];
   $("au-alt").textContent = a[2]; $("au-alt").hidden = !a[2]; $("au-alt").dataset.m = a[3];
   $("au-l-mail").hidden = m === "nueva"; $("au-l-ok").hidden = m !== "registro"; $("au-l-pass").hidden = m === "olvido";
-  $("au-forgot").hidden = m !== "login"; $("au-msg").textContent = ""; $("au-gate").hidden = true; $("au-google-box").hidden = !(m === "login" || m === "registro");
+  $("au-forgot").hidden = m !== "login"; $("au-msg").textContent = ""; $("au-gate").hidden = true;
   $("au-pass").autocomplete = m === "login" ? "current-password" : "new-password";
 }
 const errEs = e => /invalid login/i.test(e.message) ? "Correo o contraseña incorrectos." : /not confirmed/i.test(e.message) ? "Aún no has confirmado tu correo. Revisa tu bandeja de entrada." : /rate limit|too many/i.test(e.message) ? "Demasiados intentos. Espera unos minutos." : e.message;
@@ -1084,14 +1076,6 @@ $("au-go").onclick = async () => {
     else if (AUTH_MODE === "olvido") { const { error } = await sb.auth.resetPasswordForEmail(mail, { redirectTo: back }); if (error) throw error; msg("Si el correo existe, recibirás un enlace para crear una nueva contraseña."); }
     else { const { error } = await sb.auth.updateUser({ password: pass }); if (error) throw error; RECOVERY = false; show("apartado"); }
   } catch (e) { msg("No se pudo completar: " + errEs(e)); }
-};
-$("au-google").onclick = async () => {
-  const msg = s => { $("au-msg").textContent = s; };
-  if (!sb) return msg("No se pudo cargar el sistema de cuentas. Revisa tu conexión y recarga la página.");
-  msg("Abriendo Google…");
-  try { sessionStorage.setItem("dcv_goto", "apartado"); } catch (e) {}
-  const { error } = await sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: location.origin + location.pathname, queryParams: { prompt: "select_account" } } });
-  if (error) msg("No se pudo entrar con Google: " + errEs(error));
 };
 $("del-ok").onclick = async () => {
   const msg = t => { $("del-msg").textContent = t; };
