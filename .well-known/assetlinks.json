@@ -8,5 +8,15 @@
         "0F:CA:8A:35:D2:57:BE:BE:7F:89:FA:E5:C2:37:08:9F:E9:27:AD:0F:25:04:34:F2:41:A5:21:B4:73:7F:A6:24"
       ]
     }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.docentscv.justiciacv",
+      "sha256_cert_fingerprints": [
+        "4F:73:D6:8F:17:48:5A:68:38:C0:09:82:87:3B:CD:F0:B9:E9:C2:7E:A3:06:31:80:9F:55:92:F8:62:BB:9E:56"
+      ]
+    }
   }
 ]
