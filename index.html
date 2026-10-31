@@ -361,6 +361,19 @@ details.panel[open]>summary{margin-bottom:.8rem}
       <button class="who-btn" id="av-btn" aria-label="Menú de usuario" aria-haspopup="true" aria-expanded="false">?</button>
       <div class="menu" id="menu-us" hidden><div class="em" id="who"></div><button id="ad-go" hidden>Administración</button><button id="mn-aj">⚙️ Ajustes y avisos</button><button id="mn-msg">💬 Sugerencias y reclamaciones</button><button id="mn-del">Eliminar mi cuenta</button><button id="logout">Salir</button></div></div>
     <div class="hola" id="perfil"></div>
+    <details class="panel" id="ua-panel" hidden>
+      <summary id="ua-sum">Última adjudicación</summary>
+      <p class="note" id="ua-dom" style="margin:.2rem 0 .5rem"></p>
+      <div class="filters">
+        <label>Cuerpo <select id="ua-cuerpo"></select></label>
+        <label>Especialidad <select id="ua-esp"></select></label>
+        <label>Provincia <select id="ua-prov"><option value="">Todas</option><option>Alicante</option><option>Castelló</option><option>València</option></select></label>
+        <label>Localidad o centro <input id="ua-q" type="search" placeholder="Filtrar"></label>
+      </div>
+      <p class="note" id="ua-info" style="margin:.2rem 0 .5rem"></p>
+      <p style="margin:.2rem 0"><button type="button" class="dbtn" id="ua-mapbtn">🗺️ Ver en el mapa</button></p><div id="ua-map" class="mapa" hidden></div>
+      <div id="ua-body"></div>
+    </details>
     <div id="acc-box"></div>
     <div id="dist-card"></div>
     <div id="ref-top"></div>
@@ -794,7 +807,7 @@ async function geoLocs() {
 const posCentro = cod => { const c = CEN[cod] || {}; if (c.lat != null && c.lon != null) return [c.lat, c.lon]; const g = GEO && GEO.get((c.localidad || "") + "|" + (c.provincia || "")); return g && g.lat != null ? [g.lat, g.lon] : null; };
 async function mapaRefrescar(pre) {
   const el = $(pre + "-map"); if (!el || el.hidden) return;
-  const rows = (pre === "of" ? window.__ofFil : window.__dcFil) || [];
+  const rows = (pre === "of" ? window.__ofFil : pre === "ua" ? window.__uaFil : window.__dcFil) || [];
   try { await Promise.all([leafletCargar(), geoLocs()]); } catch (e) { el.outerHTML = '<p class="note" id="' + pre + '-map">No se pudo cargar el mapa.</p>'; return; }
   let m = MAPAS[pre]; if (!m) { m = MAPAS[pre] = { map: L.map(el).setView([39.2, -0.6], 7), capa: L.layerGroup() }; L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "© OpenStreetMap" }).addTo(m.map); m.capa.addTo(m.map); }
   m.capa.clearLayers();
@@ -814,7 +827,7 @@ async function mapaRefrescar(pre) {
   });
   setTimeout(() => { m.map.invalidateSize(); if (pts.length) m.map.fitBounds(L.latLngBounds(pts).pad(.15), { maxZoom: 12 }); }, 80);
 }
-["of", "dc"].forEach(pre => document.addEventListener("click", async ev => {
+["of", "dc", "ua"].forEach(pre => document.addEventListener("click", async ev => {
   const b = ev.target.closest("#" + pre + "-mapbtn"); if (!b) return;
   const el = $(pre + "-map");
   if (el.hidden) {      // el mapa es solo para personas con cuenta
@@ -984,7 +997,7 @@ const obsTxt = r => {
   if (r.iti && st.length) return " · Centros: " + st.map(x => esc(x.nom) + " (" + x.h + " h)").join(" + ");
   return " · " + esc(r.observ);
 };
-const plazaTags = r => `<span class="tag">${plazaTipo(r)}</span>${r.iti ? `<span class="tag itin">🚗 Itinerante${sitios(r).length > 1 ? " · " + sitios(r).length + " centros" : ""}</span>` : ""}${reducida(r) ? `<span class="tag red">⏱ Jornada reducida · ${fmtH(r.horas)} h</span>` : ""}<span class="tag ${r.req_ling ? "ing" : "noing"}">${esc(plazaIng(r))}</span>`;
+const plazaTags = r => `<span class="tag">${plazaTipo(r)}</span>${r.iti ? `<span class="tag itin">🚗 Itinerante${sitios(r).length > 1 ? " · " + sitios(r).length + " centros" : ""}</span>` : ""}${reducida(r) ? `<span class="tag red">⏱ Jornada reducida · ${fmtH(r.horas)} h</span>` : ""}${r.req_ling ? `<span class="tag ing">${esc(plazaIng(r))}</span>` : ""}`;
 const reqOtra = r => r.req_ling && !/^ING/i.test(r.req_ling.trim()) ? " · req. " + esc(r.req_ling.replace(/\.$/, "")) : "";
 const difItem = r => `<div class="it"><div class="a"><b>${esc(r.centro || r.centro_codigo)}</b><small>${esc(r.localidad || "")}${reqOtra(r)}${obsTxt(r)}${distBtn(r)}${favBtn(r)}${segBtn(r)}</small></div><div class="z tg">${DIF && DIF.adj && DIF.adj.has(r.especialidad_codigo + "|" + r.codigo_plaza) ? '<span class="tag" style="background:var(--ok-bg);color:var(--ok)">✔ Adjudicada</span> ' : ""}${plazaTags(r)}</div></div>`;
 async function difInit() {
@@ -1050,6 +1063,40 @@ $("of-cuerpo").addEventListener("change", () => { ofEsp(); ofPintar(); });
 ["of-esp", "of-prov"].forEach(id => $(id).addEventListener("change", ofPintar));
 $("of-q").addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(ofPintar, 300); });
 
+/* ---------- Mi apartado: última adjudicación ordenada por distancia al domicilio ---------- */
+let UA_N = 100;
+async function uaCard(ac) {
+  const pan = $("ua-panel"); if (!pan) return;
+  if (!ac || !ac.activo) { pan.hidden = true; return; }
+  const o = await cargarOfertas(); if (!o.fecha) { pan.hidden = true; return; }
+  pan.hidden = false; $("ua-sum").textContent = "Última adjudicación · " + fmtF(o.fecha);
+  const cus = [...new Set(o.rows.map(r => r.cuerpo))], cv = $("ua-cuerpo").value;
+  $("ua-cuerpo").innerHTML = '<option value="">Todos los cuerpos</option>' + cus.map(c => `<option value="${esc(c)}">${esc(cuerpoNombre(c))}</option>`).join(""); $("ua-cuerpo").value = cv;
+  uaEsp(); uaPintar();
+}
+function uaEsp() {
+  const cu = $("ua-cuerpo").value, ev = $("ua-esp").value, es = new Map();
+  OFER.rows.filter(r => !cu || r.cuerpo === cu).forEach(r => es.set(r.especialidad_codigo, 1));
+  $("ua-esp").innerHTML = '<option value="">Todas las especialidades</option>' + [...es.keys()].sort().map(c => `<option value="${esc(c)}">${esc(espNom("", c))}</option>`).join(""); $("ua-esp").value = es.has(ev) ? ev : "";
+}
+function uaPintar() {
+  if (!OFER || !OFER.fecha) return;
+  const cu = $("ua-cuerpo").value, es = $("ua-esp").value, pv = $("ua-prov").value, q = $("ua-q").value.trim().toLowerCase();
+  const fil = OFER.rows.filter(r => (!cu || r.cuerpo === cu) && (!es || r.especialidad_codigo === es) && (!pv || r.provincia === pv) && (!q || ((r.centro || "") + " " + (r.localidad || "")).toLowerCase().includes(q)));
+  const km = r => { const d = distInfo(r.centro_codigo); return d ? d.km : 1e9; };
+  fil.sort((a, b) => (DOM ? km(a) - km(b) : 0) || (a.localidad || "").localeCompare(b.localidad || "") || (a.centro || "").localeCompare(b.centro || ""));
+  window.__uaFil = fil; mapaRefrescar("ua");
+  $("ua-dom").innerHTML = DOM ? "Ordenadas de la más cercana a la más lejana desde tu domicilio (distancia aproximada por carretera)." : 'Para ordenarlas por distancia, <button type="button" class="link" id="ua-adddom">añade tu domicilio</button>. Mientras tanto se ordenan por localidad.';
+  if ($("ua-adddom")) $("ua-adddom").onclick = () => cfgAbrir("ajustes");
+  const nv = fil.filter(r => r.tipo === "vacante").length, cen = new Set(fil.map(r => r.centro_codigo)).size;
+  $("ua-info").innerHTML = `<strong>${fil.length}</strong> plaza${fil.length === 1 ? "" : "s"} en ${cen} centro${cen === 1 ? "" : "s"} (${nv} vacante${nv === 1 ? "" : "s"}, ${fil.length - nv} sustitucion${fil.length - nv === 1 ? "" : "es"}).`;
+  const it = r => { const d = distInfo(r.centro_codigo); return `<div class="it"><div class="a"><b>${esc(r.centro || r.centro_codigo)}</b><small>${esc(r.localidad || "")} · ${esc(espNom("", r.especialidad_codigo))}${reqOtra(r)}${obsTxt(r)}${d ? `<br><span class="dist">📍 ${d.txt}</span> <a href="${mapsUrl(r.centro_codigo)}" target="_blank" rel="noopener" style="font-size:.85rem;white-space:nowrap">🗺️ Ruta</a>` : ""}<br>${favBtn(r)}</small></div><div class="z tg">${plazaTags(r)}</div></div>`; };
+  $("ua-body").innerHTML = fil.length ? fil.slice(0, UA_N).map(it).join("") + (fil.length > UA_N ? `<p style="text-align:center"><button type="button" class="btn" id="ua-mas">Ver más (${fil.length - UA_N} restantes)</button></p>` : "") : '<p class="note">No hay plazas con esos filtros.</p>';
+  if ($("ua-mas")) $("ua-mas").onclick = () => { UA_N += 100; uaPintar(); };
+}
+$("ua-cuerpo").addEventListener("change", () => { UA_N = 100; uaEsp(); uaPintar(); });
+["ua-esp", "ua-prov"].forEach(id => $(id).addEventListener("change", () => { UA_N = 100; uaPintar(); }));
+$("ua-q").addEventListener("input", () => { clearTimeout(window.__uaT); window.__uaT = setTimeout(() => { UA_N = 100; uaPintar(); }, 300); });
 /* ---------- CUENTAS (Supabase Auth) ---------- */
 function initAuth() {
   if (!window.supabase) return;
@@ -1307,7 +1354,7 @@ async function renderApartado() {
     if (data === "ok") return renderApartado();
     $("adn-msg").textContent = data === "no_encontrado" ? "No encontramos ese nombre en las listas." : "No tienes permiso.";
   };
-  const ac = await accesoInfo(); pintarAcceso(ac); ACC = ac; refTop(ac); distCard(ac); favCard(ac);
+  const ac = await accesoInfo(); pintarAcceso(ac); ACC = ac; refTop(ac); distCard(ac); favCard(ac); uaCard(ac);
   if (!ac.activo) { $("analisis").hidden = true; return; }
   $("analisis").hidden = false;
   situacion();
@@ -1545,7 +1592,7 @@ async function oportunidades(pan, espMia) {
     if (!sel.value) { out.innerHTML = ""; return; }
     const rp = pan.find(x => String(x.lista_id) === sel.dataset.lista) || {};
     const ofC = ofertaVigente() ? OFER.rows.filter(o => o.centro_codigo === sel.value && (rp.cuerpo === "maestros" ? (o.cuerpo === "maestros" && (espMia || []).includes(o.especialidad_codigo)) : (o.cuerpo === rp.cuerpo && o.especialidad_codigo === rp.bolsa))) : [];
-    const bannerO = ofC.length ? `<div class="op-b go" style="--c:var(--amb);--cb:var(--amb-bg)" role="status"><div class="k">📣 Se ofertan en este centro</div><div class="h">${ofC.length === 1 ? "1 plaza" : ofC.length + " plazas"} en la próxima adjudicación (${fmtF(OFER.fecha)})</div>${ofC.map(o => `<p><strong>${esc(plazaTipo(o))}</strong>${rp.cuerpo === "maestros" ? " · esp. " + esc(o.especialidad_codigo) : ""} · ${esc(plazaIng(o))}${o.iti ? " · Itinerante" + (sitios(o).length > 1 ? " (" + sitios(o).length + " centros)" : "") : ""}${reducida(o) ? " · Jornada reducida (" + fmtH(o.horas) + " h)" : ""}${obsTxt(o)}</p>`).join("")}</div>` : "";
+    const bannerO = ofC.length ? `<div class="op-b go" style="--c:var(--amb);--cb:var(--amb-bg)" role="status"><div class="k">📣 Se ofertan en este centro</div><div class="h">${ofC.length === 1 ? "1 plaza" : ofC.length + " plazas"} en la próxima adjudicación (${fmtF(OFER.fecha)})</div>${ofC.map(o => `<p><strong>${esc(plazaTipo(o))}</strong>${rp.cuerpo === "maestros" ? " · esp. " + esc(o.especialidad_codigo) : ""}${o.req_ling ? " · " + esc(plazaIng(o)) : ""}${o.iti ? " · Itinerante" + (sitios(o).length > 1 ? " (" + sitios(o).length + " centros)" : "") : ""}${reducida(o) ? " · Jornada reducida (" + fmtH(o.horas) + " h)" : ""}${obsTxt(o)}</p>`).join("")}</div>` : "";
     const K = rows.filter(o => o.mi_posicion != null && o.mi_posicion < o.posicion_adj).length;
     const dato = rows.filter(o => o.mi_posicion != null), N = dato.length, ult = dato[0];
     let cartel = "";
