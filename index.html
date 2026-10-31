@@ -133,6 +133,7 @@ th,td{text-align:left;padding:.5rem .7rem;border-bottom:1px solid var(--line)}
 th{font-size:.85rem;color:var(--muted);font-weight:600}
 .n{text-align:right}
 tr.reach td{background:color-mix(in srgb,var(--mark) 35%,transparent)}
+.it .z.tg{display:flex;flex-direction:column;align-items:flex-end;gap:.25rem}.tag.itin{background:var(--ok-bg);color:var(--ok)}.tag.red{background:var(--amb-bg);color:var(--amb)}.tag.ing{background:var(--blu-bg);color:var(--blu)}.tag.noing{background:transparent;border:1px solid var(--line);color:var(--muted);font-weight:500}
 .tag{display:inline-block;background:var(--mark);color:var(--mark-ink);border-radius:.35rem;padding:0 .4rem;font-size:.8rem;font-weight:600}
 .note{font-size:.9rem;color:var(--muted);margin:.6rem 0 0}
 .err{color:var(--err);font-weight:500}
@@ -928,7 +929,7 @@ async function cargarOfertas() {
   try {
     const f = await getJ("plazas_ofertadas?select=fecha,version&order=fecha.desc&limit=1");
     if (!f.length) return (OFER = { fecha: null, rows: [] });
-    const rows = await getJ(`plazas_ofertadas?select=cuerpo,especialidad_codigo,provincia,localidad,centro_codigo,centro,tipo,detalle,codigo_plaza,req_ling,observ&fecha=eq.${f[0].fecha}&order=especialidad_codigo.asc&limit=1000`);
+    const rows = await getJ(`plazas_ofertadas?select=cuerpo,especialidad_codigo,provincia,localidad,centro_codigo,centro,tipo,detalle,codigo_plaza,req_ling,observ,horas,iti&fecha=eq.${f[0].fecha}&order=especialidad_codigo.asc&limit=1000`);
     await cargarCentros(rows.map(r => r.centro_codigo));
     rows.forEach(r => { const c = CEN[r.centro_codigo]; if (c) { r.centro = c.nombre || r.centro; r.localidad = c.localidad || r.localidad; r.provincia = c.provincia || r.provincia; } });
     return (OFER = { fecha: f[0].fecha, version: f[0].version, rows });
@@ -964,15 +965,28 @@ async function cargarDif() {
   try {
     const f = await getJ("plazas_dificil?select=fecha&order=fecha.desc&limit=1");
     if (!f.length) return (DIF = { fecha: null, rows: [] });
-    const rows = await getJ(`plazas_dificil?select=cuerpo,especialidad_codigo,provincia,localidad,centro_codigo,centro,tipo,detalle,codigo_plaza,req_ling,observ&fecha=eq.${f[0].fecha}&order=especialidad_codigo.asc&limit=1000`);
+    const rows = await getJ(`plazas_dificil?select=cuerpo,especialidad_codigo,provincia,localidad,centro_codigo,centro,tipo,detalle,codigo_plaza,req_ling,observ,horas,iti&fecha=eq.${f[0].fecha}&order=especialidad_codigo.asc&limit=1000`);
     await cargarCentros(rows.map(r => r.centro_codigo));
     rows.forEach(r => { const c = CEN[r.centro_codigo]; if (c) { r.centro = c.nombre || r.centro; r.localidad = c.localidad || r.localidad; r.provincia = c.provincia || r.provincia; } });
+    const hmx = {}; rows.forEach(r => { if (r.horas != null) hmx[r.cuerpo] = Math.max(hmx[r.cuerpo] || 0, +r.horas); }); rows.forEach(r => { r.hmax = hmx[r.cuerpo]; });      // en difícil cobertura siempre figuran las horas: la jornada completa es la mayor de su cuerpo
     const adj = new Map(); let adjN = 0, adjB = 0;
     try { (await getJ(`v_dificil_adj?select=especialidad_codigo,codigo_plaza,peticion,en_bolsa&fecha=eq.${f[0].fecha}&limit=1000`)).forEach(a => { adj.set(a.especialidad_codigo + "|" + a.codigo_plaza, a); adjN++; if (a.en_bolsa) adjB++; }); } catch (e) {}
     return (DIF = { fecha: f[0].fecha, rows, adj, adjN, adjB });
   } catch (e) { return (DIF = { fecha: null, rows: [] }); }
 }
-const difItem = r => `<div class="it"><div class="a"><b>${esc(r.centro || r.centro_codigo)}</b><small>${esc(r.localidad || "")}${r.req_ling ? " · req. " + esc(r.req_ling.replace(/\.$/, "")) : ""}${r.observ ? " · " + esc(r.observ) : ""}${distBtn(r)}${favBtn(r)}${segBtn(r)}</small></div><div class="z">${DIF && DIF.adj && DIF.adj.has(r.especialidad_codigo + "|" + r.codigo_plaza) ? '<span class="tag" style="background:var(--ok-bg);color:var(--ok)">✔ Adjudicada</span> ' : ""}<span class="tag">${r.tipo === "vacante" ? "Vacante" : "Sustitución"}</span></div></div>`;
+const plazaTipo = r => r.tipo === "vacante" ? "Vacante" : /indeterm/i.test(r.detalle || "") ? "Sustitución indeterminada" : /determ/i.test(r.detalle || "") ? "Sustitución determinada" : "Sustitución";
+const plazaIng = r => { const l = (r.req_ling || "").replace(/\.$/, "").trim(); if (!l) return "No es en inglés"; const m = /^ING[-\s]?([ABC][12])/i.exec(l); return m ? "En inglés (" + m[1].toUpperCase() + ")" : "Req. " + l; };
+const reducida = r => r.horas != null && (r.hmax != null ? +r.horas < r.hmax : true) && !r.iti;
+const sitios = r => { const o = [], re = /(\d{8}):\s*(.+?)\s+(\d+(?:,\d+)?)\s*hores/g; let m; while ((m = re.exec(r.observ || ""))) o.push({ nom: m[2], h: m[3] }); return o; };
+const obsTxt = r => {
+  if (!r.observ) return "";
+  const st = sitios(r);
+  if (r.iti && st.length) return " · Centros: " + st.map(x => esc(x.nom) + " (" + x.h + " h)").join(" + ");
+  return " · " + esc(r.observ);
+};
+const plazaTags = r => `<span class="tag">${plazaTipo(r)}</span>${r.iti ? `<span class="tag itin">🚗 Itinerante${sitios(r).length > 1 ? " · " + sitios(r).length + " centros" : ""}</span>` : ""}${reducida(r) ? `<span class="tag red">⏱ Jornada reducida · ${fmtH(r.horas)} h</span>` : ""}<span class="tag ${r.req_ling ? "ing" : "noing"}">${esc(plazaIng(r))}</span>`;
+const reqOtra = r => r.req_ling && !/^ING/i.test(r.req_ling.trim()) ? " · req. " + esc(r.req_ling.replace(/\.$/, "")) : "";
+const difItem = r => `<div class="it"><div class="a"><b>${esc(r.centro || r.centro_codigo)}</b><small>${esc(r.localidad || "")}${reqOtra(r)}${obsTxt(r)}${distBtn(r)}${favBtn(r)}${segBtn(r)}</small></div><div class="z tg">${DIF && DIF.adj && DIF.adj.has(r.especialidad_codigo + "|" + r.codigo_plaza) ? '<span class="tag" style="background:var(--ok-bg);color:var(--ok)">✔ Adjudicada</span> ' : ""}${plazaTags(r)}</div></div>`;
 async function difInit() {
   const o = await cargarDif();
   if (!o.fecha) { $("dc-panel").hidden = true; return; }
@@ -1029,7 +1043,7 @@ function ofPintar() {
   window.__ofFil = fil; mapaRefrescar("of");
   $("of-body").innerHTML = fil.length ? [...gr].map(([e, rs]) => {
     const a = alcanceUlt(e), ctx = a ? (a.p ? ` · en la última tanda (${fmtF(a.f)}) se llegó hasta la posición <strong>${a.p}</strong>` : ` · sin adjudicaciones en la última tanda (${fmtF(a.f)})`) : "";
-    return `<div class="note" style="margin:.9rem 0 .2rem"><strong>${esc(espNom("", e))}</strong> — ${rs.length} plaza${rs.length === 1 ? "" : "s"}${ctx}</div>` + rs.map(r => `<div class="it"><div class="a"><b>${esc(r.centro || r.centro_codigo)}</b><small>${esc(r.localidad || "")}${r.req_ling ? " · req. " + esc(r.req_ling.replace(/\.$/, "")) : ""}${r.observ ? " · " + esc(r.observ) : ""}${distBtn(r)}${favBtn(r)}</small></div><div class="z"><span class="tag">${r.tipo === "vacante" ? "Vacante" : "Sustitución"}</span></div></div>`).join("");
+    return `<div class="note" style="margin:.9rem 0 .2rem"><strong>${esc(espNom("", e))}</strong> — ${rs.length} plaza${rs.length === 1 ? "" : "s"}${ctx}</div>` + rs.map(r => `<div class="it"><div class="a"><b>${esc(r.centro || r.centro_codigo)}</b><small>${esc(r.localidad || "")}${reqOtra(r)}${obsTxt(r)}${distBtn(r)}${favBtn(r)}</small></div><div class="z tg">${plazaTags(r)}</div></div>`).join("");
   }).join("") : '<p class="note">No hay plazas con esos filtros.</p>';
 }
 $("of-cuerpo").addEventListener("change", () => { ofEsp(); ofPintar(); });
@@ -1531,7 +1545,7 @@ async function oportunidades(pan, espMia) {
     if (!sel.value) { out.innerHTML = ""; return; }
     const rp = pan.find(x => String(x.lista_id) === sel.dataset.lista) || {};
     const ofC = ofertaVigente() ? OFER.rows.filter(o => o.centro_codigo === sel.value && (rp.cuerpo === "maestros" ? (o.cuerpo === "maestros" && (espMia || []).includes(o.especialidad_codigo)) : (o.cuerpo === rp.cuerpo && o.especialidad_codigo === rp.bolsa))) : [];
-    const bannerO = ofC.length ? `<div class="op-b go" style="--c:var(--amb);--cb:var(--amb-bg)" role="status"><div class="k">📣 Se ofertan en este centro</div><div class="h">${ofC.length === 1 ? "1 plaza" : ofC.length + " plazas"} en la próxima adjudicación (${fmtF(OFER.fecha)})</div>${ofC.map(o => `<p>${o.tipo === "vacante" ? "<strong>Vacante</strong>" : "<strong>Sustitución</strong>"}${rp.cuerpo === "maestros" ? " · esp. " + esc(o.especialidad_codigo) : ""}${o.req_ling ? " · req. " + esc(o.req_ling.replace(/\.$/, "")) : ""}${o.observ ? " · " + esc(o.observ) : ""}</p>`).join("")}</div>` : "";
+    const bannerO = ofC.length ? `<div class="op-b go" style="--c:var(--amb);--cb:var(--amb-bg)" role="status"><div class="k">📣 Se ofertan en este centro</div><div class="h">${ofC.length === 1 ? "1 plaza" : ofC.length + " plazas"} en la próxima adjudicación (${fmtF(OFER.fecha)})</div>${ofC.map(o => `<p><strong>${esc(plazaTipo(o))}</strong>${rp.cuerpo === "maestros" ? " · esp. " + esc(o.especialidad_codigo) : ""} · ${esc(plazaIng(o))}${o.iti ? " · Itinerante" + (sitios(o).length > 1 ? " (" + sitios(o).length + " centros)" : "") : ""}${reducida(o) ? " · Jornada reducida (" + fmtH(o.horas) + " h)" : ""}${obsTxt(o)}</p>`).join("")}</div>` : "";
     const K = rows.filter(o => o.mi_posicion != null && o.mi_posicion < o.posicion_adj).length;
     const dato = rows.filter(o => o.mi_posicion != null), N = dato.length, ult = dato[0];
     let cartel = "";
