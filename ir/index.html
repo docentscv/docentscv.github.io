@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>DocentsCV</title>
+<style>
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0a1633;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;text-align:center;padding:24px}
+  a{color:#ffc247;font-weight:700}
+  .caja{max-width:360px}
+  h1{font-size:28px;margin:0 0 12px}
+  h1 span{color:#ffc247}
+  p{color:#a9bceb;line-height:1.5}
+  .boton{display:inline-block;margin-top:18px;background:#ffc247;color:#0a1633;text-decoration:none;padding:14px 26px;border-radius:30px}
+</style>
+</head>
+<body>
+<div class="caja">
+  <h1>Docents<span>CV</span></h1>
+  <p id="msg">Abriendo DocentsCV…</p>
+  <a class="boton" id="enlace" href="https://docentscv.github.io/">Abrir DocentsCV</a>
+</div>
+<script>
+  // Cuando la app esté publicada en Google Play, pon aquí su enlace (por ejemplo https://play.google.com/store/apps/details?id=...).
+  // Mientras esté vacío, todos van a la web.
+  var ENLACE_ANDROID = "";
+  var WEB = "https://docentscv.github.io/";
+
+  var esAndroid = /Android/i.test(navigator.userAgent);
+  var destino = (esAndroid && ENLACE_ANDROID) ? ENLACE_ANDROID : WEB;
+  document.getElementById("enlace").href = destino;
+  setTimeout(function () { window.location.replace(destino); }, 300);
+</script>
+</body>
+</html>
