@@ -433,8 +433,8 @@ details.panel[open]>summary{margin-bottom:.8rem}
     </details>
 
     <details class="panel" id="adm-cad">
-      <summary>Pruebas terminadas sin pagar (15 días o más)</summary>
-      <p class="note" style="margin:.2rem 0 .5rem">Personas que usaron los <span class="dp">7</span> días de prueba y a los 15 días siguen sin pagar. Pulsa «Enviar descuento» para abrir un correo ya redactado (con un precio rebajado y tu código promocional de Google Play, más el recordatorio de invitar a 3 personas).</p>
+      <summary>Pruebas terminadas sin pagar (<span class="da">22</span> días o más)</summary>
+      <p class="note" style="margin:.2rem 0 .5rem">Personas que usaron los <span class="dp">7</span> días de prueba y a los <span class="da">22</span> días desde que empezaron siguen sin pagar. Pulsa «Enviar descuento» para abrir un correo ya redactado (con un precio rebajado y tu código promocional de Google Play, más el recordatorio de invitar a 3 personas).</p>
       <div class="filters"><label>Tu código promocional de Play <input id="cad-cod" type="text" placeholder="Ej.: DOCENTS749" style="width:12rem"></label><label>Precio con descuento <input id="cad-pre" type="text" placeholder="Ej.: 5,99" style="width:5rem"> €</label><button class="btn" id="cad-copiar">Copiar todos los correos</button></div>
       <div id="cad-res" class="note">Cargando…</div>
       <div class="scroll"><table><thead><tr><th>Correo</th><th>Nombre</th><th class="n">Días</th><th>Descuento enviado</th><th></th></tr></thead><tbody id="cad-rows"></tbody></table></div>
@@ -515,8 +515,8 @@ details.panel[open]>summary{margin-bottom:.8rem}
 <script>
 // ====== CONEXIÓN SUPABASE ======
 /* Días de prueba que se anuncian en la web: debe coincidir con config.dias_prueba de Supabase (update config set valor='15' where clave='dias_prueba') */
-const DIAS_PRUEBA = 7;
-document.querySelectorAll(".dp").forEach(e => e.textContent = DIAS_PRUEBA);
+const DIAS_PRUEBA = 15, DIAS_AVISO = DIAS_PRUEBA + 7;      // el aviso de descuento sale 7 días después de acabar la prueba (mismo cálculo en lanzamiento.sql)
+document.querySelectorAll(".dp").forEach(e => e.textContent = DIAS_PRUEBA); document.querySelectorAll(".da").forEach(e => e.textContent = DIAS_AVISO);
 const SUPABASE_URL = "https://gwoamxgvnhietzhixjlf.supabase.co";
 const SUPABASE_KEY = "sb_publishable_H2de5fVQpyV-L9y_5K6DpA_ZQ_zQCUl";   // clave pública
 // ===============================
