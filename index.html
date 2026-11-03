@@ -258,7 +258,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
     <h1>Consulta</h1>
     <div class="hero" id="hero"><div class="skel sk-hero" style="background:rgba(255,255,255,.18)"></div></div>
 
-    <div class="sc" id="ref-cons" style="--c:var(--ok);--cb:var(--ok-bg);margin:1rem 0"><div class="sc-st"><i>🎁</i><div>Invita a tus compañeros y consigue la app gratis<small>Si 3 personas se registran con tu código y pagan, tu curso es gratis. Con los 7 días de prueba tienes tiempo de sobra para invitar a todos los que puedas.</small></div></div>
+    <div class="sc" id="ref-cons" style="--c:var(--ok);--cb:var(--ok-bg);margin:1rem 0"><div class="sc-st"><i>🎁</i><div>Invita a tus compañeros y consigue la app gratis<small>Si 3 personas se registran con tu código y pagan, tu curso es gratis. Con los <span class="dp">7</span> días de prueba tienes tiempo de sobra para invitar a todos los que puedas.</small></div></div>
       <div class="sc-b"><button class="btn" id="ref-cons-go">Quiero mi código</button></div></div>
 
     <div class="hero hero-of" id="of-hero" hidden></div>
@@ -413,9 +413,17 @@ details.panel[open]>summary{margin-bottom:.8rem}
     <details class="panel" id="adm-usu">
       <summary>Usuarios y pagos</summary>
       <div id="us-res" class="note">Cargando…</div>
+      <div class="filters" style="margin:.4rem 0 .2rem"><label>🎁 Acceso gratuito, como si hubiera pagado · correo de la persona <input id="rg-mail" type="email" placeholder="correo@ejemplo.com" autocomplete="off" style="min-width:min(20rem,80vw)"></label><button class="btn" id="rg-dar">Dar acceso gratis</button><button class="link" id="rg-quitar">Quitar acceso gratuito</button></div>
+      <p class="note" id="rg-msg" role="status" style="margin:.2rem 0 .6rem">La persona tiene que haberse registrado antes. Dura hasta fin de curso y no cuenta como pago ni como referido.</p>
       <div class="filters"><label>Buscar <input id="us-q" type="search" placeholder="Correo o nombre"></label>
-        <label>Estado <select id="us-est"><option value="">Todos</option><option value="pagado">Pagado</option><option value="en_prueba">En prueba</option><option value="prueba_terminada">Prueba terminada</option><option value="pago_caducado">Pago caducado</option><option value="registrado">Registrado (sin cobro activo)</option><option value="sin_identificar">Sin identificar</option></select></label></div>
-      <div class="scroll"><table><thead><tr><th>Correo</th><th>Nombre</th><th>Alta</th><th>Estado</th><th>Pagó el</th><th>Válido hasta</th></tr></thead><tbody id="us-rows"></tbody></table></div>
+        <label>Estado <select id="us-est"><option value="">Todos</option><option value="pagado">Pagado</option><option value="regalo">Acceso gratuito (regalo)</option><option value="en_prueba">En prueba</option><option value="prueba_terminada">Prueba terminada</option><option value="pago_caducado">Pago caducado</option><option value="registrado">Registrado (sin cobro activo)</option><option value="sin_identificar">Sin identificar</option></select></label></div>
+      <div class="scroll"><table><thead><tr><th>Correo</th><th>Nombre</th><th>Alta</th><th>Estado</th><th>Pagó el</th><th>Válido hasta</th><th></th></tr></thead><tbody id="us-rows"></tbody></table></div>
+    </details>
+
+    <details class="panel" id="adm-emb">
+      <summary>Embudo: visitas → registro → prueba → pago</summary>
+      <div class="filters"><label>Periodo <select id="emb-dias"><option value="7">Últimos 7 días</option><option value="30" selected>Últimos 30 días</option><option value="3650">Todo</option></select></label></div>
+      <div id="emb-res" class="note">Cargando…</div>
     </details>
 
     <details class="panel" id="adm-msg">
@@ -426,7 +434,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
 
     <details class="panel" id="adm-cad">
       <summary>Pruebas terminadas sin pagar (15 días o más)</summary>
-      <p class="note" style="margin:.2rem 0 .5rem">Personas que usaron los 7 días de prueba y a los 15 días siguen sin pagar. Pulsa «Enviar descuento» para abrir un correo ya redactado (con un precio rebajado y tu código promocional de Google Play, más el recordatorio de invitar a 3 personas).</p>
+      <p class="note" style="margin:.2rem 0 .5rem">Personas que usaron los <span class="dp">7</span> días de prueba y a los 15 días siguen sin pagar. Pulsa «Enviar descuento» para abrir un correo ya redactado (con un precio rebajado y tu código promocional de Google Play, más el recordatorio de invitar a 3 personas).</p>
       <div class="filters"><label>Tu código promocional de Play <input id="cad-cod" type="text" placeholder="Ej.: DOCENTS749" style="width:12rem"></label><label>Precio con descuento <input id="cad-pre" type="text" placeholder="Ej.: 5,99" style="width:5rem"> €</label><button class="btn" id="cad-copiar">Copiar todos los correos</button></div>
       <div id="cad-res" class="note">Cargando…</div>
       <div class="scroll"><table><thead><tr><th>Correo</th><th>Nombre</th><th class="n">Días</th><th>Descuento enviado</th><th></th></tr></thead><tbody id="cad-rows"></tbody></table></div>
@@ -506,6 +514,9 @@ details.panel[open]>summary{margin-bottom:.8rem}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 // ====== CONEXIÓN SUPABASE ======
+/* Días de prueba que se anuncian en la web: debe coincidir con config.dias_prueba de Supabase (update config set valor='15' where clave='dias_prueba') */
+const DIAS_PRUEBA = 7;
+document.querySelectorAll(".dp").forEach(e => e.textContent = DIAS_PRUEBA);
 const SUPABASE_URL = "https://gwoamxgvnhietzhixjlf.supabase.co";
 const SUPABASE_KEY = "sb_publishable_H2de5fVQpyV-L9y_5K6DpA_ZQ_zQCUl";   // clave pública
 // ===============================
@@ -526,6 +537,13 @@ async function api(path, extra = {}) {
   return r;
 }
 const getJ = async p => (await api(p)).json();
+/* Contador de visitas anónimo (solo suma 1 al día por origen: ni IP, ni cookies, ni identificadores). Origen: ?o=telegram, ?o=instagram...; "app" si se abre desde la app instalada */
+(function () {
+  try { if (sessionStorage.getItem("dcv_v")) return; sessionStorage.setItem("dcv_v", "1"); } catch (e) {}
+  let o = ""; try { o = new URLSearchParams(location.search).get("o") || ""; } catch (e) {}
+  try { if (!o && window.matchMedia && matchMedia("(display-mode: standalone)").matches) o = "app"; } catch (e) {}
+  fetch(SUPABASE_URL + "/rest/v1/rpc/contar_visita", { method: "POST", headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ p_origen: o }) }).catch(() => {});
+})();
 
 /* ---------- navegación ---------- */
 function show(v) {
@@ -536,7 +554,7 @@ function show(v) {
   tb.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
   if (v === "consulta") { consultaInit(); if (!$("rows").children.length) load(true); }
   if (v === "apartado") renderApartado();
-  if (v === "admin") { if (!ADMIN) return show("home"); adminLista(); adminUsuarios(); adminCaducadas(); adminMensajes(); }
+  if (v === "admin") { if (!ADMIN) return show("home"); adminLista(); adminUsuarios(); adminCaducadas(); adminMensajes(); adminEmbudo(); }
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (b) { try { navigator.vibrate && navigator.vibrate(8); } catch (_) {} show(b.dataset.go); } });
 
@@ -1264,7 +1282,7 @@ async function refTop(ac) {
 }
 $("ref-cons-go").onclick = async () => {
   if (!sb) return; const { data: { session } } = await sb.auth.getSession();
-  if (!session) { show("auth"); authMode("registro"); authAviso("Crea tu cuenta gratis: tendrás 7 días de prueba y tu código para invitar."); return; }
+  if (!session) { show("auth"); authMode("registro"); authAviso("Crea tu cuenta gratis: tendrás " + DIAS_PRUEBA + " días de prueba y tu código para invitar."); return; }
   show("apartado"); setTimeout(() => cfgAbrir("ajustes"), 1200);
 };
 async function refInit() {
@@ -1413,20 +1431,46 @@ async function adminEstado() {
   const lin = (t, x) => `<li>${t}: ${x ? `<b>${esc(x.nombre)}</b> (cargada el ${f(x.creado)})` : "ninguna todavía"}</li>`;
   box.innerHTML = `<b>Descarga automática</b> · última búsqueda en la web de la Conselleria: <b>${hace(data.ultima_busqueda)}</b> (solo busca de lunes a viernes, de 7 a 22 h)<ul style="margin:.3rem 0 0 1.1rem;padding:0">${lin("Adjudicación continua · Maestros", data.continua_maestros)}${lin("Adjudicación continua · Secundaria y otros", data.continua_otros)}${lin("Plazas ofertadas", data.ofertas)}</ul>`;
 }
-const EST_US = { pagado: "Pagado", en_prueba: "En prueba", prueba_terminada: "Prueba terminada", pago_caducado: "Pago caducado", registrado: "Registrado", sin_identificar: "Sin identificar" };
+const EST_US = { regalo: "🎁 Acceso gratuito", pagado: "Pagado", en_prueba: "En prueba", prueba_terminada: "Prueba terminada", pago_caducado: "Pago caducado", registrado: "Registrado", sin_identificar: "Sin identificar" };
 let USU = [];
 async function adminUsuarios() {
   const { data, error } = await sb.rpc("admin_usuarios");
   if (error) { $("us-res").innerHTML = `<span class="err">${esc(error.message)}</span>`; return; }
   USU = data || []; const n = e => USU.filter(u => u.estado === e).length;
-  $("us-res").innerHTML = `<b>${USU.length}</b> altas · <b>${n("pagado")}</b> pagado${n("pagado") === 1 ? "" : "s"} · <b>${n("en_prueba")}</b> en prueba · <b>${n("prueba_terminada") + n("pago_caducado")}</b> sin pagar tras la prueba · <b>${n("registrado")}</b> registrados (sin cobro activo) · <b>${n("sin_identificar")}</b> sin identificar`;
+  $("us-res").innerHTML = `<b>${USU.length}</b> altas · <b>${USU.filter(u => u.estado === "pagado" && u.origen !== "regalo").length}</b> pagado${USU.filter(u => u.estado === "pagado" && u.origen !== "regalo").length === 1 ? "" : "s"} · <b>${USU.filter(u => u.origen === "regalo" && u.estado === "pagado").length}</b> de regalo · <b>${n("en_prueba")}</b> en prueba · <b>${n("prueba_terminada") + n("pago_caducado")}</b> sin pagar tras la prueba · <b>${n("registrado")}</b> registrados (sin cobro activo) · <b>${n("sin_identificar")}</b> sin identificar`;
   usuPintar();
 }
 function usuPintar() {
   const q = $("us-q").value.trim().toLowerCase(), es = $("us-est").value, f = d => d ? new Date(d).toLocaleDateString("es-ES") : "—";
-  const fil = USU.filter(u => (!es || u.estado === es) && (!q || ((u.email || "") + " " + (u.nombre || "")).toLowerCase().includes(q)));
-  $("us-rows").innerHTML = fil.length ? fil.slice(0, 500).map(u => `<tr><td>${esc(u.email)}</td><td>${esc(u.nombre || "—")}</td><td>${f(u.alta)}</td><td>${esc(EST_US[u.estado] || u.estado)}</td><td>${u.estado === "pagado" || u.estado === "pago_caducado" ? f(u.pagado_el) : "—"}</td><td>${u.pagado_hasta ? fmtF(u.pagado_hasta) : "—"}</td></tr>`).join("") : '<tr><td colspan="6">Sin resultados.</td></tr>';
+  const fil = USU.filter(u => (!es || (es === "regalo" ? u.origen === "regalo" && u.estado === "pagado" : u.estado === es)) && (!q || ((u.email || "") + " " + (u.nombre || "")).toLowerCase().includes(q)));
+  $("us-rows").innerHTML = fil.length ? fil.slice(0, 500).map(u => `<tr><td>${esc(u.email)}</td><td>${esc(u.nombre || "—")}</td><td>${f(u.alta)}</td><td>${esc(u.origen === "regalo" && u.estado === "pagado" ? EST_US.regalo : EST_US[u.estado] || u.estado)}</td><td>${u.estado === "pagado" || u.estado === "pago_caducado" ? f(u.pagado_el) : "—"}</td><td>${u.pagado_hasta ? fmtF(u.pagado_hasta) : "—"}</td><td>${u.origen === "regalo" && u.estado === "pagado" ? `<button class="link" data-rg="0" data-m="${esc(u.email)}">Quitar regalo</button>` : u.estado === "pagado" ? "" : `<button class="link" data-rg="1" data-m="${esc(u.email)}">🎁 Dar acceso gratis</button>`}</td></tr>`).join("") : '<tr><td colspan="7">Sin resultados.</td></tr>';
+  $("us-rows").querySelectorAll("button[data-rg]").forEach(b => b.onclick = () => regalo(b.dataset.m, b.dataset.rg === "1"));
 }
+const RG_MSG = { ok: "Listo.", no_existe: "No hay ninguna cuenta con ese correo. La persona tiene que registrarse primero.", ya_pago: "Esa persona ya ha pagado: no hace falta darle acceso.", no_es_regalo: "Esa persona no tiene un acceso gratuito.", no_autorizado: "No tienes permiso." };
+async function regalo(mail, on) {
+  mail = (mail || "").trim(); const box = $("rg-msg");
+  if (!mail) { box.textContent = "Escribe el correo de la persona."; return; }
+  if (on && !confirm("¿Dar acceso gratuito a " + mail + " hasta fin de curso?")) return;
+  const { data, error } = await sb.rpc("admin_dar_acceso", { p_email: mail, p_on: on });
+  box.textContent = error ? "No se pudo: " + error.message : data === "ok" ? (on ? "🎁 Listo: " + mail + " tiene acceso gratuito hasta fin de curso." : "Acceso gratuito quitado a " + mail + ".") : (RG_MSG[data] || data);
+  if (!error && data === "ok") { $("rg-mail").value = ""; adminUsuarios(); }
+}
+$("rg-dar").onclick = () => regalo($("rg-mail").value, true);
+$("rg-quitar").onclick = () => regalo($("rg-mail").value, false);
+async function adminEmbudo() {
+  const box = $("emb-res"); if (!box) return;
+  const { data, error } = await sb.rpc("admin_embudo", { p_dias: +$("emb-dias").value });
+  if (error) { box.innerHTML = `<span class="err">${esc(error.message)}</span> (¿has ejecutado lanzamiento.sql en Supabase?)`; return; }
+  const T = (data || []).find(r => r.origen === "TOTAL"); if (!T) { box.textContent = "Sin datos."; return; }
+  const pasos = [["Visitas", +T.visitas], ["Registros", +T.registros], ["Se identifican con su nombre", +T.identificados], ["Empiezan la prueba", +T.pruebas], ["Pagan", +T.pagos]];
+  const pc = (a, b) => b > 0 ? Math.round(a / b * 100) + " %" : "—";
+  box.innerHTML = `<div class="scroll"><table><thead><tr><th>Paso</th><th class="n">Personas</th><th class="n">% del paso anterior</th></tr></thead><tbody>${pasos.map((x, i) => `<tr><td>${x[0]}</td><td class="n"><b>${x[1]}</b></td><td class="n">${i ? pc(x[1], pasos[i - 1][1]) : ""}</td></tr>`).join("")}</tbody></table></div>
+    <p class="note" style="margin:.5rem 0">Visitas = aperturas de la web en un navegador (no personas distintas). «Empiezan la prueba» y «Pagan» solo se rellenan cuando el cobro está activado.</p>
+    <h3 style="margin:.8rem 0 .3rem;font:600 1rem var(--body)">Visitas por origen</h3>
+    <div class="scroll"><table><thead><tr><th>Origen</th><th class="n">Visitas</th></tr></thead><tbody>${(data || []).filter(r => r.origen !== "TOTAL").map(r => `<tr><td>${esc(r.origen)}</td><td class="n">${r.visitas}</td></tr>`).join("") || '<tr><td colspan="2">Todavía sin visitas.</td></tr>'}</tbody></table></div>
+    <p class="note">Para saber de dónde viene la gente, pon <b>?o=telegram</b>, <b>?o=instagram</b>… al final del enlace que compartes (por ejemplo https://docentscv.github.io/?o=telegram). «app» es la app instalada y «directo» los que entran sin origen.</p>`;
+}
+$("emb-dias").addEventListener("change", adminEmbudo);
 let CAD = [];
 const nomPila = n => ((n || "").split(",")[1] || n || "").trim().toLowerCase().replace(/(^|\s)\S/g, c => c.toUpperCase());
 try { $("cad-cod").value = localStorage.getItem("dcv_promo") || ""; } catch (e) {}
@@ -1440,7 +1484,7 @@ function cadPintar() {
     if (!pre) { alert("Escribe primero el precio con descuento (por ejemplo 5,99)."); return; }
     if (!cod && !confirm("No has escrito tu código promocional de Play: el correo saldrá sin él. ¿Continuar?")) return;
     const asunto = "Un descuento para seguir con DocentsCV";
-    const cuerpo = `Hola${nomPila(u.nombre) ? ", " + nomPila(u.nombre) : ""}:\n\nProbaste DocentsCV durante la semana de prueba y quería ofrecerte un precio especial: ${pre} € por todo el curso 2026/27 (en lugar de 7,49 €).${cod ? `\n\nTu código de descuento: ${cod}\nPuedes canjearlo en Google Play: Menú → Pagos y suscripciones → Canjear código.` : ""}\n\nY si prefieres conseguirla gratis: en Mi apartado → Ajustes encontrarás tu código personal. Si 3 personas se registran con él y pagan, tu curso es gratis.\n\nGracias por usar DocentsCV.\nFede`;
+    const cuerpo = `Hola${nomPila(u.nombre) ? ", " + nomPila(u.nombre) : ""}:\n\nProbaste DocentsCV durante los ${DIAS_PRUEBA} días de prueba y quería ofrecerte un precio especial: ${pre} € por todo el curso 2026/27 (en lugar de 7,49 €).${cod ? `\n\nTu código de descuento: ${cod}\nPuedes canjearlo en Google Play: Menú → Pagos y suscripciones → Canjear código.` : ""}\n\nY si prefieres conseguirla gratis: en Mi apartado → Ajustes encontrarás tu código personal. Si 3 personas se registran con él y pagan, tu curso es gratis.\n\nGracias por usar DocentsCV.\nFede`;
     location.href = "mailto:" + encodeURIComponent(u.email).replace(/%40/g, "@") + "?subject=" + encodeURIComponent(asunto) + "&body=" + encodeURIComponent(cuerpo);
     try { await sb.rpc("admin_marcar_descuento", { p_email: u.email }); } catch (e) {}
     adminCaducadas();
