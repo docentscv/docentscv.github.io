@@ -77,6 +77,8 @@ body{padding-bottom:calc(4.9rem + env(safe-area-inset-bottom,0px));overscroll-be
 .au-gate{margin:0 0 1rem;padding:.9rem 1rem;border-radius:12px;background:var(--amb-bg);border:2px solid var(--amb);color:var(--ink,#1a2433);font:700 1.15rem/1.35 var(--body)}
 .espfila{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.3rem .8rem}.espfila .link{white-space:nowrap}
 #esp-dlg{border:0;border-radius:14px;padding:1.1rem;width:min(92vw,34rem);max-height:90vh;overflow:auto;box-shadow:0 10px 40px #0006}#esp-dlg::backdrop{background:#0008}#esp-dlg textarea{min-height:4rem;font:inherit;padding:.5rem;border-radius:8px;border:1px solid var(--line,#ccd);width:100%;box-sizing:border-box}
+.who-btn{position:relative}.who-btn.pend::after{content:attr(data-n);position:absolute;top:-.35rem;right:-.45rem;min-width:1.25rem;height:1.25rem;padding:0 .25rem;box-sizing:border-box;border-radius:1rem;background:#d33;color:#fff;font:700 .72rem/1.25rem var(--body);text-align:center;border:2px solid var(--bg,#fff)}
+#adm-dlg{border:0;border-radius:14px;padding:1.1rem;width:min(92vw,34rem);max-height:90vh;overflow:auto;box-shadow:0 10px 40px #0006}#adm-dlg::backdrop{background:#0008}
 #msg-dlg{border:0;border-radius:14px;padding:1.1rem;width:min(92vw,30rem);box-shadow:0 10px 40px #0006}#msg-dlg::backdrop{background:#0008}
 #msg-dlg label{display:flex;flex-direction:column;gap:.25rem;margin:.6rem 0;font-size:.92rem}#msg-dlg textarea{min-height:7rem;font:inherit;padding:.5rem;border-radius:8px;border:1px solid var(--line)}
 .dbtn{margin-top:.15rem;padding:.05rem .6rem;border-radius:99px;border:1px solid var(--blu);background:var(--blu-bg);color:var(--blu);font:700 .8rem var(--body);cursor:pointer;white-space:nowrap}
@@ -503,6 +505,12 @@ details.panel[open]>summary{margin-bottom:.8rem}
   </div>
   <div class="ft"><button class="link" id="onb-skip">Saltar</button><div class="dots" id="onb-dots"><i class="on"></i><i></i><i></i></div><button class="btn" id="onb-next">Siguiente</button></div>
 </div>
+<dialog id="adm-dlg">
+  <h2 style="margin:0 0 .3rem;font-size:1.25rem" id="adm-dlg-t">📬 Tienes mensajes pendientes</h2>
+  <p class="note" style="margin:0 0 .6rem" id="adm-dlg-s"></p>
+  <div id="adm-dlg-l"></div>
+  <div class="filters" style="margin-top:.8rem"><button class="btn" id="adm-dlg-go" type="button">Ir a resolverlos</button><button class="link" id="adm-dlg-x" type="button">Luego</button></div>
+</dialog>
 <dialog id="esp-dlg">
   <div id="ep-form"><div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0;font-size:1.25rem">✏️ Pedir cambio de especialidad</h2><button class="link" id="ep-x" type="button" aria-label="Cerrar">✕</button></div>
     <p class="note" style="margin:.4rem 0 .6rem">Marca <strong>todas</strong> las especialidades de Maestros que tengas. Se lo enviamos a administración y te las cambiamos.</p>
@@ -1319,7 +1327,7 @@ async function renderApartado() {
   if (!session) { show("auth"); authMode("login"); return; }
   USER = session.user; $("who").textContent = USER.email; $("av-btn").textContent = (USER.email || "?")[0].toUpperCase();
   if (!$("s-cards").children.length) $("s-cards").innerHTML = '<div class="skel sk-card"></div><div class="skel sk-card"></div>';
-  await adminInit();
+  await adminInit(); adminAviso();
   let idn = null;
   try { idn = (await sb.rpc("mi_nombre")).data; } catch (e) {}
   if (!idn) {
@@ -1404,6 +1412,21 @@ async function adminInit() {
   ADMIN = true; $("ad-go").hidden = false;
 }
 $("ad-go").onclick = () => show("admin");
+const MSG_TN = { sugerencia: "💡 Sugerencia", reclamacion: "📣 Reclamación", error: "🐞 Error / avería", otro: "Mensaje", especialidad: "✏️ Cambio de especialidad" };
+function adminBadge(n) { const b = $("av-btn"); if (!b) return; b.classList.toggle("pend", n > 0); b.dataset.n = n > 99 ? "99+" : String(n); b.setAttribute("aria-label", "Menú de usuario" + (n ? " (" + n + " mensajes pendientes)" : "")); $("ad-go").textContent = "Administración" + (n ? " · " + n + " pendiente" + (n === 1 ? "" : "s") : ""); }
+async function adminAviso() {
+  if (!ADMIN) { adminBadge(0); return; }
+  let L = []; try { L = (await sb.rpc("admin_mensajes")).data || []; } catch (e) { return; }
+  const pend = L.filter(m => !m.resuelto); adminBadge(pend.length);
+  if (!pend.length) return;
+  try { if (sessionStorage.getItem("dcv_adm_aviso")) return; sessionStorage.setItem("dcv_adm_aviso", "1"); } catch (e) {}
+  $("adm-dlg-t").textContent = "📬 " + (pend.length === 1 ? "Tienes 1 mensaje pendiente" : "Tienes " + pend.length + " mensajes pendientes");
+  $("adm-dlg-s").textContent = pend.length > 5 ? "Estos son los 5 más recientes." : "Sugerencias, averías o peticiones de usuarios.";
+  $("adm-dlg-l").innerHTML = pend.slice(0, 5).map(m => `<div class="it"><div class="a"><b>${MSG_TN[m.tipo] || "Mensaje"} · ${esc(new Date(m.creado).toLocaleString("es-ES", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }))}</b><small style="white-space:pre-wrap">${esc(m.texto.replace(/\n?\[ESP:[0-9,]+\]/, "").slice(0, 160))}</small></div></div>`).join("");
+  if (!$("adm-dlg").open) $("adm-dlg").showModal();
+}
+$("adm-dlg-x").onclick = () => $("adm-dlg").close();
+$("adm-dlg-go").onclick = () => { $("adm-dlg").close(); show("admin"); setTimeout(() => { const d = $("adm-msg"); d.open = true; d.scrollIntoView({ behavior: "smooth", block: "start" }); }, 600); };
 function cfgAbrir(id) { $("cfg").hidden = false; ["ajustes", "del-panel"].forEach(x => { $(x).open = (x === id); }); const t = $(id).hidden ? $("del-panel") : $(id); t.open = true; t.scrollIntoView({ behavior: "smooth", block: "start" }); }
 $("mn-aj").onclick = () => cfgAbrir("ajustes");
 async function msgAbrir() {
@@ -1505,7 +1528,7 @@ function cadPintar() {
 async function adminMensajes() {
   const r = await sb.rpc("admin_mensajes"); if (r.error) { $("msg-res").innerHTML = `<span class="err">${esc(r.error.message)}</span>`; return; }
   const L = r.data || [], pend = L.filter(m => !m.resuelto).length, TN = { sugerencia: "💡 Sugerencia", reclamacion: "📣 Reclamación", error: "🐞 Error", otro: "Mensaje", especialidad: "✏️ Cambio de especialidad" };
-  $("adm-msg-sum").textContent = "Sugerencias y reclamaciones" + (pend ? " (" + pend + " sin resolver)" : "");
+  $("adm-msg-sum").textContent = "Sugerencias y reclamaciones" + (pend ? " (" + pend + " sin resolver)" : ""); adminBadge(pend);
   $("msg-res").textContent = L.length ? pend + " sin resolver de " + L.length + "." : "Todavía no hay mensajes.";
   $("msg-lista").innerHTML = L.map(m => `<div class="it" style="${m.resuelto ? "opacity:.55" : ""}"><div class="a"><b>${TN[m.tipo] || "Mensaje"} · ${esc(new Date(m.creado).toLocaleString("es-ES", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }))}</b><small style="white-space:pre-wrap;color:var(--ink,inherit)">${esc(m.texto.replace(/\n?\[ESP:[0-9,]+\]/, ""))}</small><small>${m.email ? `<a href="mailto:${esc(m.email)}?subject=${encodeURIComponent("Sobre tu mensaje en DocentsCV")}">${esc(m.email)}</a>` : "Sin correo"}</small></div><div class="z">${m.tipo === "especialidad" && !m.resuelto && /\[ESP:([0-9,]+)\]/.test(m.texto) && m.email ? `<button type="button" class="btn" data-ap="${m.id}" data-em="${esc(m.email)}" data-esp="${esc(m.texto.match(/\[ESP:([0-9,]+)\]/)[1])}">✅ Aplicar cambio</button> ` : ""}<button type="button" class="dbtn" data-mid="${m.id}" data-r="${m.resuelto ? 0 : 1}">${m.resuelto ? "Reabrir" : "✔ Resuelto"}</button></div></div>`).join("");
 }
