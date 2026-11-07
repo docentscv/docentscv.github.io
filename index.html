@@ -438,10 +438,10 @@ details.panel[open]>summary{margin-bottom:.8rem}
 
     <details class="panel" id="adm-cad">
       <summary id="cad-sum">Pruebas terminadas sin pagar (22 días o más)</summary>
-      <p class="note" style="margin:.2rem 0 .5rem">Personas que usaron los <span class="dp">7</span> días de prueba y a los <span class="da">22</span> días desde que empezaron siguen sin pagar. Pulsa «Enviar descuento» para abrir un correo ya redactado (con un precio rebajado y tu código promocional de Google Play, más el recordatorio de invitar a 3 personas).</p>
-      <div class="filters"><label>Tu código promocional de Play <input id="cad-cod" type="text" placeholder="Ej.: DOCENTS749" style="width:12rem"></label><label>Precio con descuento <input id="cad-pre" type="text" placeholder="Ej.: 5,99" style="width:5rem"> €</label><button class="btn" id="cad-copiar">Copiar todos los correos</button></div>
+      <p class="note" style="margin:.2rem 0 .5rem">Personas que usaron los <span class="dp">7</span> días de prueba y a los <span class="da">22</span> días desde que empezaron siguen sin pagar. Pulsa «Enviar recordatorio» para abrir un correo ya redactado (recuerda que la prueba terminó, el precio y cómo conseguirla gratis invitando a 3 personas).</p>
+      <div class="filters"><button class="btn" id="cad-copiar">Copiar todos los correos</button></div>
       <div id="cad-res" class="note">Cargando…</div>
-      <div class="scroll"><table><thead><tr><th>Correo</th><th>Nombre</th><th class="n">Días</th><th>Descuento enviado</th><th></th></tr></thead><tbody id="cad-rows"></tbody></table></div>
+      <div class="scroll"><table><thead><tr><th>Correo</th><th>Nombre</th><th class="n">Días</th><th>Recordatorio enviado</th><th></th></tr></thead><tbody id="cad-rows"></tbody></table></div>
       <h3 style="margin:1rem 0 .3rem;font:600 1rem var(--body)">Referidos</h3>
       <div class="scroll"><table><thead><tr><th>Quien invita</th><th>Código</th><th class="n">Invitados</th><th class="n">Han pagado</th></tr></thead><tbody id="ref-rows"></tbody></table></div>
     </details>
@@ -1196,13 +1196,13 @@ $("logout").onclick = async () => { if (sb) await sb.auth.signOut(); USER = null
 // ---- Acceso: prueba gratuita y pago (el cierre real lo hace la base de datos)
 let SIM = null;   // solo administradores: simula "prueba" o "fin" para ver cómo queda
 async function accesoInfo() {
-  if (ADMIN && SIM === "fin") return { cobro_activo: true, activo: false, precio: "7.49", fin_curso: "2027-06-30" };
-  if (ADMIN && SIM === "prueba") return { cobro_activo: true, activo: true, en_prueba: true, dias_restantes: 5, precio: "7.49", fin_curso: "2027-06-30" };
+  if (ADMIN && SIM === "fin") return { cobro_activo: true, activo: false, precio: "4.99", fin_curso: "2027-06-30" };
+  if (ADMIN && SIM === "prueba") return { cobro_activo: true, activo: true, en_prueba: true, dias_restantes: 5, precio: "4.99", fin_curso: "2027-06-30" };
   try { const { data, error } = await sb.rpc("mi_acceso"); if (!error && data) return data; } catch (e) {}
   return { cobro_activo: false, activo: true };
 }
 function pintarAcceso(ac) {
-  const box = $("acc-box"), pr = String(ac.precio || "7.49").replace(".", ","), fin = ac.fin_curso ? fmtF(ac.fin_curso) : "";
+  const box = $("acc-box"), pr = String(ac.precio || "4.99").replace(".", ","), fin = ac.fin_curso ? fmtF(ac.fin_curso) : "";
   if (ac.gratis_referidos) { box.innerHTML = `<div class="sc" style="--c:var(--ok);--cb:var(--ok-bg);margin-top:1rem"><div class="sc-st"><i>🎉</i><div>Tienes la app gratis este curso<small>Gracias por invitar a 3 personas${fin ? ". Acceso hasta el " + fin : ""}.</small></div></div></div>`; return; }
   if (!ac.cobro_activo || (ac.activo && !ac.en_prueba)) { box.innerHTML = ""; return; }
   if (ac.activo) {
@@ -1212,7 +1212,7 @@ function pintarAcceso(ac) {
   }
   box.innerHTML = `<div class="sc" style="--c:var(--blu);--cb:var(--blu-bg);margin-top:1rem"><div class="sc-h"><b>Tu prueba gratuita ha terminado</b><span>Sigue viendo tu situación en las bolsas</span></div>
     <div class="sc-b"><ul class="l" style="margin:.4rem 0"><li>Tu puesto y cómo evoluciona en cada bolsa</li><li>Probabilidad de conseguir plaza</li><li>Oportunidades por centro y últimas adjudicaciones</li><li>Hasta dónde se llegó otros años</li></ul>
-    <div class="sc-p" style="--pc:var(--blu);--pb:var(--blu-bg)"><div class="t">Todo el curso</div><div class="v">${pr} €</div><div class="d">Pago único${fin ? ", con acceso hasta el " + fin : ""}. Sin renovación automática.</div></div>
+    <div class="sc-p" style="--pc:var(--blu);--pb:var(--blu-bg)"><div class="t">Todo el curso</div><div class="v">${pr} €</div><div class="d">${pr === "4,99" ? "Precio especial por incorporarte a mitad de curso. " : ""}Pago único${fin ? ", con acceso hasta el " + fin : ""}. Sin renovación automática.</div></div>
     <p style="margin:1rem 0 .3rem"><button class="btn" id="pagar" style="font-size:1.1rem;padding:.7rem 1.4rem">Pagar ${pr} €</button></p>
     <p class="note" id="pagar-msg" role="status"></p></div></div>`;
   $("pagar").onclick = () => pagarPlay(false);
@@ -1509,18 +1509,14 @@ async function adminEmbudo() {
 $("emb-dias").addEventListener("change", adminEmbudo);
 let CAD = [];
 const nomPila = n => ((n || "").split(",")[1] || n || "").trim().toLowerCase().replace(/(^|\s)\S/g, c => c.toUpperCase());
-try { $("cad-cod").value = localStorage.getItem("dcv_promo") || ""; } catch (e) {}
-$("cad-cod").addEventListener("input", () => { try { localStorage.setItem("dcv_promo", $("cad-cod").value); } catch (e) {} });
 function cadPintar() {
   const f = d => d ? new Date(d).toLocaleDateString("es-ES") : "—";
   $("cad-res").innerHTML = CAD.length ? `<b>${CAD.length}</b> persona${CAD.length === 1 ? "" : "s"} · <b>${CAD.filter(u => !u.avisado).length}</b> sin avisar` : "Nadie por ahora. (Solo se rellena cuando el cobro está activado.)";
-  $("cad-rows").innerHTML = CAD.map((u, i) => `<tr><td>${esc(u.email)}</td><td>${esc(u.nombre || "—")}</td><td class="n">${u.dias}</td><td>${f(u.avisado)}</td><td><button class="btn" data-i="${i}" style="padding:.2rem .7rem">✉️ Enviar descuento</button></td></tr>`).join("");
+  $("cad-rows").innerHTML = CAD.map((u, i) => `<tr><td>${esc(u.email)}</td><td>${esc(u.nombre || "—")}</td><td class="n">${u.dias}</td><td>${f(u.avisado)}</td><td><button class="btn" data-i="${i}" style="padding:.2rem .7rem">✉️ Enviar recordatorio</button></td></tr>`).join("");
   $("cad-rows").querySelectorAll("button").forEach(b => b.onclick = async () => {
-    const u = CAD[+b.dataset.i], cod = $("cad-cod").value.trim(), pre = $("cad-pre").value.trim();
-    if (!pre) { alert("Escribe primero el precio con descuento (por ejemplo 5,99)."); return; }
-    if (!cod && !confirm("No has escrito tu código promocional de Play: el correo saldrá sin él. ¿Continuar?")) return;
-    const asunto = "Un descuento para seguir con DocentsCV";
-    const cuerpo = `Hola${nomPila(u.nombre) ? ", " + nomPila(u.nombre) : ""}:\n\nProbaste DocentsCV durante los ${DIAS_PRUEBA} días de prueba y quería ofrecerte un precio especial: ${pre} € por todo el curso 2026/27 (en lugar de 7,49 €).${cod ? `\n\nTu código de descuento: ${cod}\nPuedes canjearlo en Google Play: Menú → Pagos y suscripciones → Canjear código.` : ""}\n\nY si prefieres conseguirla gratis: en Mi apartado → Ajustes encontrarás tu código personal. Si 3 personas se registran con él y pagan, tu curso es gratis.\n\nGracias por usar DocentsCV.\nFede`;
+    const u = CAD[+b.dataset.i];
+    const asunto = "Tu prueba de DocentsCV ha terminado";
+    const cuerpo = `Hola${nomPila(u.nombre) ? ", " + nomPila(u.nombre) : ""}:\n\nProbaste DocentsCV durante los ${DIAS_PRUEBA} días de prueba y quería recordarte que puedes seguir viendo tu situación en las bolsas, tu probabilidad de plaza y las últimas adjudicaciones por solo 4,99 € por todo el curso 2026/27 (pago único, sin renovación automática).\n\nY si prefieres conseguirla gratis: en Mi apartado → Ajustes encontrarás tu código personal. Si 3 personas se registran con él y pagan, tu curso es gratis.\n\nGracias por usar DocentsCV.\nFede`;
     location.href = "mailto:" + encodeURIComponent(u.email).replace(/%40/g, "@") + "?subject=" + encodeURIComponent(asunto) + "&body=" + encodeURIComponent(cuerpo);
     try { await sb.rpc("admin_marcar_descuento", { p_email: u.email }); } catch (e) {}
     adminCaducadas();
@@ -1796,7 +1792,7 @@ $("ep-x").onclick = $("ep-cerrar").onclick = () => $("esp-dlg").close();
 async function situacion() {
   $("s-cards").innerHTML = '<div class="panel">Cargando…</div>'; $("u-body").innerHTML = ""; $("h-body").innerHTML = "";
   const [a, b] = await Promise.all([sb.rpc("mi_situacion"), sb.rpc("mi_panorama")]);
-  if ((a.error || b.error || {}).message === "sin_acceso") { pintarAcceso({ cobro_activo: true, activo: false, precio: "7.49" }); $("analisis").hidden = true; return; }
+  if ((a.error || b.error || {}).message === "sin_acceso") { pintarAcceso({ cobro_activo: true, activo: false, precio: "4.99" }); $("analisis").hidden = true; return; }
   if (a.error || b.error) { $("s-cards").innerHTML = `<div class="panel err">${esc((a.error || b.error).message)}</div>`; return; }
   const hist = a.data || [], pan = b.data || [];
   const histDe = r => hist.filter(h => h.cuerpo === r.cuerpo && h.bolsa === r.bolsa);   // ya viene de la más reciente a la más antigua
