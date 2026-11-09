@@ -1037,7 +1037,16 @@ const obsTxt = r => {
   if (r.iti && st.length) return " · Centros: " + st.map(x => esc(x.nom) + " (" + x.h + " h)").join(" + ");
   return " · " + esc(r.observ);
 };
-const plazaTags = r => `<span class="tag">${plazaTipo(r)}</span>${r.iti ? `<span class="tag itin">🚗 Itinerante${sitios(r).length > 1 ? " · " + sitios(r).length + " centros" : ""}</span>` : ""}${reducida(r) ? `<span class="tag red">⏱ Jornada reducida · ${fmtH(r.horas)} h</span>` : ""}${r.req_ling ? `<span class="tag ing">${esc(plazaIng(r))}</span>` : ""}`;
+/* Jornada del centro (completa/partida) y web: datos de centros_info.json. La jornada solo se muestra en plazas de Maestros. */
+let JINFO = {};
+fetch("centros_info.json").then(r => r.ok ? r.json() : {}).then(j => { JINFO = j || {}; }).catch(() => {});
+const jornadaTag = r => {
+  const j = JINFO[r.centro_codigo]; if (!j) return "";
+  const mae = String(r.especialidad_codigo || "")[0] === "1";
+  return (mae && j[0] ? `<span class="tag" title="Horario del centro: ${j[0] === "C" ? "jornada completa (continua)" : "jornada partida"}">${j[0] === "C" ? "🕘 Jornada completa" : "🕑 Jornada partida"}</span>` : "")
+    + (/^https?:\/\//.test(j[1] || "") ? `<a class="tag" href="${esc(j[1])}" target="_blank" rel="noopener" title="Web del centro">🌐 Web del centro</a>` : "");
+};
+const plazaTags = r => `<span class="tag">${plazaTipo(r)}</span>${jornadaTag(r)}${r.iti ? `<span class="tag itin">🚗 Itinerante${sitios(r).length > 1 ? " · " + sitios(r).length + " centros" : ""}</span>` : ""}${reducida(r) ? `<span class="tag red">⏱ Jornada reducida · ${fmtH(r.horas)} h</span>` : ""}${r.req_ling ? `<span class="tag ing">${esc(plazaIng(r))}</span>` : ""}`;
 const reqOtra = r => r.req_ling && !/^ING/i.test(r.req_ling.trim()) ? " · req. " + esc(r.req_ling.replace(/\.$/, "")) : "";
 const difItem = r => `<div class="it"><div class="a"><b>${esc(r.centro || r.centro_codigo)}</b><small>${esc(r.localidad || "")}${reqOtra(r)}${obsTxt(r)}${distBtn(r)}${favBtn(r)}${segBtn(r)}</small></div><div class="z tg">${DIF && DIF.adj && DIF.adj.has(r.especialidad_codigo + "|" + r.codigo_plaza) ? '<span class="tag" style="background:var(--ok-bg);color:var(--ok)">✔ Adjudicada</span> ' : ""}${plazaTags(r)}</div></div>`;
 async function difInit() {
