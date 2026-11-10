@@ -595,7 +595,7 @@ function show(v) {
   tb.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
   if (v === "consulta") { consultaInit(); if (!$("rows").children.length) load(true); }
   if (v === "apartado") renderApartado();
-  if (v === "admin") { if (!ADMIN) return show("home"); adminLista(); adminUsuarios(); adminCaducadas(); adminMensajes(); adminEmbudo(); adminPlataformas(); }
+  if (v === "admin") { if (!ADMIN) return show("home"); adminLista(); adminUsuarios(); adminCaducadas(); adminMensajes(); adminEmbudo(); }
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (b) { try { navigator.vibrate && navigator.vibrate(8); } catch (_) {} show(b.dataset.go); } });
 
@@ -1537,7 +1537,7 @@ async function adminEmbudo() {
     <div class="scroll"><table><thead><tr><th>Origen</th><th class="n">Visitas</th></tr></thead><tbody>${(data || []).filter(r => r.origen !== "TOTAL").map(r => `<tr><td>${esc(r.origen)}</td><td class="n">${r.visitas}</td></tr>`).join("") || '<tr><td colspan="2">Todavía sin visitas.</td></tr>'}</tbody></table></div>
     <h3 style="margin:.8rem 0 .3rem;font:600 1rem var(--body)">Visitas por dispositivo</h3>
     <div id="emb-plat" class="note">Cargando…</div>
-    <p class="note">Para saber de dónde viene la gente, pon <b>?o=telegram</b>, <b>?o=instagram</b>… al final del enlace que compartes (por ejemplo https://docentscv.github.io/?o=telegram). «app» es la app instalada y «directo» los que entran sin origen.</p>`;
+    <p class="note">Para saber de dónde viene la gente, pon <b>?o=telegram</b>, <b>?o=instagram</b>… al final del enlace que compartes (por ejemplo https://docentscv.github.io/?o=telegram). «app» es la app instalada y «directo» los que entran sin origen.</p>`;  adminPlataformas();
 }
 async function adminPlataformas() {
   const box = $("emb-plat"); if (!box) return;
@@ -1546,7 +1546,7 @@ async function adminPlataformas() {
   const N = { ios: "🍎 iPhone / iPad", android: "🤖 Android", pc: "💻 Ordenador", otro: "Sin dato" }, L = data || [], tot = L.reduce((a, r) => a + +r.visitas, 0);
   box.innerHTML = tot ? `<div class="scroll"><table><thead><tr><th>Dispositivo</th><th class="n">Visitas</th><th class="n">%</th></tr></thead><tbody>${L.map(r => `<tr><td>${N[r.plataforma] || esc(r.plataforma)}</td><td class="n">${r.visitas}</td><td class="n">${Math.round(r.visitas / tot * 100)} %</td></tr>`).join("")}</tbody></table></div>` : "Todavía sin datos (se cuenta desde que subas esta versión).";
 }
-$("emb-dias").addEventListener("change", () => { adminEmbudo(); adminPlataformas(); });
+$("emb-dias").addEventListener("change", adminEmbudo);
 let CAD = [];
 const nomPila = n => ((n || "").split(",")[1] || n || "").trim().toLowerCase().replace(/(^|\s)\S/g, c => c.toUpperCase());
 function cadPintar() {
