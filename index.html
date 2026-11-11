@@ -1644,6 +1644,23 @@ const EST_TXT = {
 const fmtF = f => f ? String(f).split("-").reverse().join("/") : "";
 const pct = p => p < 0.01 ? "menos del 1 %" : Math.round(p * 100) + " %";
 const acum = (p, n) => 1 - Math.pow(1 - p, n);
+/* «¿Cuándo me tocará?»: con la probabilidad por tanda (p1) y el ritmo de tandas, fecha en la que la probabilidad acumulada llega al 50 % y al 80 %. */
+let FREQ = {};   // días entre tandas por grupo (se calcula en situacion())
+const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+const quincena = d => `${d.getDate() <= 15 ? "1.ª" : "2.ª"} quincena de ${MESES[d.getMonth()]}`;
+function cuandoTxt(r, p1) {
+  if (!(p1 > 0)) return `<p class="note" style="margin:.5rem 0 0"><strong>¿Cuándo me tocará?</strong> Con el ritmo actual de tu bolsa no se puede hacer una previsión: en las últimas tandas no ha habido plazas que te alcancen.</p>`;
+  const dias = FREQ[r.grupo] || 7, base = new Date((r.ult_tanda || r.fecha) + "T12:00:00");
+  const y = base.getMonth() >= 8 ? base.getFullYear() + 1 : base.getFullYear(), fin = new Date(y + "-06-30T12:00:00");
+  const n = q => Math.max(1, Math.ceil(Math.log(1 - q) / Math.log(1 - Math.min(p1, 0.999))));
+  const fecha = k => new Date(base.getTime() + k * dias * 864e5);
+  const f50 = fecha(n(0.5)), f80 = fecha(n(0.8));
+  let txt;
+  if (f50 > fin) txt = "Con el ritmo actual, <strong>es poco probable que te llegue plaza antes de final de curso</strong>, aunque puede cambiar si salen más plazas o se mueve la lista.";
+  else if (n(0.5) === 1) txt = `Hay más de un 50 % de probabilidad de que te llegue <strong>ya en la próxima tanda</strong>${f80 <= fin ? `, y un 80 % de que te llegue <strong>antes de la ${quincena(f80)}</strong>` : ""}.`;
+  else txt = `Con el ritmo actual, hay un 50 % de probabilidad de que te llegue <strong>antes de la ${quincena(f50)}</strong>${f80 <= fin ? `, y un 80 % de que te llegue <strong>antes de la ${quincena(f80)}</strong>` : "; no es seguro que llegue antes de final de curso"}.`;
+  return `<p class="note" style="margin:.5rem 0 0"><strong>¿Cuándo me tocará?</strong> ${txt} <em>Es una probabilidad, no una certeza:</em> depende de las plazas que salgan, de lo que pidan quienes van por delante y de que el ritmo de las tandas se mantenga.</p>`;
+}
 const nivel = p3 => p3 < 0.05 ? "Muy baja" : p3 < 0.15 ? "Baja" : p3 < 0.30 ? "Media" : p3 < 0.50 ? "Alta" : "Muy alta";
 const cuerpoNombre = slug => (CUERPOS.find(c => c.slug === slug) || {}).nombre || slug;
 const tituloLista = r => r.cuerpo === "maestros" ? "Maestros · lista única" : r.bolsa + " · " + r.bolsa_nombre;
@@ -1703,7 +1720,7 @@ function tarjeta(r, hist, alc, ua) {
   if (!mae && r.p_tanda !== null && r.p_tanda !== undefined) {
     const p1 = Number(r.p_tanda), p3 = acum(p1, 3), nv = nivel(p3);
     const pc = p3 < 0.15 ? "red" : p3 < 0.30 ? "amb" : "ok";
-    prob = `<div class="sc-p" style="--pc:var(--${pc});--pb:var(--${pc}-bg)"><div class="t">Probabilidad de conseguir plaza</div><div class="v">${nv} · ${pct(p3)}</div><div class="bar"><i style="width:${Math.max(3, Math.round(p3 * 100))}%"></i></div><div class="d">En las <strong>3 próximas tandas</strong> (${pct(p1)} en la próxima).</div></div>`;
+    prob = `<div class="sc-p" style="--pc:var(--${pc});--pb:var(--${pc}-bg)"><div class="t">Probabilidad de conseguir plaza</div><div class="v">${nv} · ${pct(p3)}</div><div class="bar"><i style="width:${Math.max(3, Math.round(p3 * 100))}%"></i></div><div class="d">En las <strong>3 próximas tandas</strong> (${pct(p1)} en la próxima).</div>${cuandoTxt(r, p1)}</div>`;
   }
   const act = mae
     ? `La lista de Maestros ha adjudicado ${r.adj_total} plazas en ${r.tandas} tandas (todas las especialidades).`
@@ -1864,6 +1881,11 @@ async function situacion() {
   if (a.error || b.error) { $("s-cards").innerHTML = `<div class="panel err">${esc((a.error || b.error).message)}</div>`; return; }
   const hist = a.data || [], pan = b.data || [];
   const histDe = r => hist.filter(h => h.cuerpo === r.cuerpo && h.bolsa === r.bolsa);   // ya viene de la más reciente a la más antigua
+  FREQ = {};
+  pan.forEach(r => {   // días medios entre tandas de su grupo este curso: desde la primera tanda continua que aparece en su historial
+    const fs = hist.filter(h => h.grupo === r.grupo && h.tipo === "continua").map(h => h.fecha).sort();
+    if (fs.length && r.tandas > 1 && r.ult_tanda) { const d = (new Date(r.ult_tanda) - new Date(fs[0])) / 864e5 / (r.tandas - 1); FREQ[r.grupo] = Math.min(14, Math.max(3, d || 7)); }
+  });
 
   // especialidades de Maestros (la lista de Maestros es única y no indica especialidad)
   let esp = [];
