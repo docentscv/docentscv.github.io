@@ -1572,9 +1572,10 @@ async function adminUsuarios() {
 function usuPintar() {
   const q = $("us-q").value.trim().toLowerCase(), es = $("us-est").value, f = d => d ? new Date(d).toLocaleDateString("es-ES") : "—";
   const fil = USU.filter(u => (!es || (es === "regalo" ? u.origen === "regalo" && u.estado === "pagado" : es === "sin_confirmar" ? u.confirmado === false : u.estado === es)) && (!q || ((u.email || "") + " " + (u.nombre || "")).toLowerCase().includes(q)));
-  $("us-rows").innerHTML = fil.length ? fil.slice(0, 500).map(u => `<tr><td>${esc(u.email)}</td><td>${esc(u.nombre || "—")}</td><td>${f(u.alta)}</td><td>${esc(u.origen === "regalo" && u.estado === "pagado" ? EST_US.regalo : EST_US[u.estado] || u.estado)}${u.confirmado === false ? `<br><span class="tag" style="background:var(--amb-bg);color:var(--amb)">✉️ Sin confirmar el correo</span> <button class="link" data-cf="${esc(u.email)}">Confirmar</button>` : ""}</td><td>${u.estado === "pagado" || u.estado === "pago_caducado" ? f(u.pagado_el) : "—"}</td><td>${u.pagado_hasta ? fmtF(u.pagado_hasta) : "—"}</td><td>${u.origen === "regalo" && u.estado === "pagado" ? `<button class="link" data-rg="0" data-m="${esc(u.email)}">Quitar regalo</button>` : u.estado === "pagado" ? "" : `<button class="link" data-rg="1" data-m="${esc(u.email)}">🎁 Dar acceso gratis</button>`}</td></tr>`).join("") : '<tr><td colspan="7">Sin resultados.</td></tr>';
+  $("us-rows").innerHTML = fil.length ? fil.slice(0, 500).map(u => `<tr><td>${esc(u.email)}</td><td>${esc(u.nombre || "—")}</td><td>${f(u.alta)}</td><td>${esc(u.origen === "regalo" && u.estado === "pagado" ? EST_US.regalo : EST_US[u.estado] || u.estado)}${u.confirmado === false ? `<br><span class="tag" style="background:var(--amb-bg);color:var(--amb)">✉️ Sin confirmar el correo</span> <button class="link" data-cf="${esc(u.email)}">Confirmar</button>` : ""}${u.esp_maestros ? `<br><button class="link" data-ue="${esc(u.email)}" data-uesp="${esc((u.esp_maestros || []).join(","))}" title="Cambiar sus especialidades de Maestros">✏️ Maestros: ${esc((u.esp_maestros || []).join(", ") || "ninguna")}</button>` : ""}</td><td>${u.estado === "pagado" || u.estado === "pago_caducado" ? f(u.pagado_el) : "—"}</td><td>${u.pagado_hasta ? fmtF(u.pagado_hasta) : "—"}</td><td>${u.origen === "regalo" && u.estado === "pagado" ? `<button class="link" data-rg="0" data-m="${esc(u.email)}">Quitar regalo</button>` : u.estado === "pagado" ? "" : `<button class="link" data-rg="1" data-m="${esc(u.email)}">🎁 Dar acceso gratis</button>`}</td></tr>`).join("") : '<tr><td colspan="7">Sin resultados.</td></tr>';
   $("us-rows").querySelectorAll("button[data-rg]").forEach(b => b.onclick = () => regalo(b.dataset.m, b.dataset.rg === "1"));
   $("us-rows").querySelectorAll("button[data-cf]").forEach(b => b.onclick = () => confirmarEmail(b.dataset.cf));
+  $("us-rows").querySelectorAll("button[data-ue]").forEach(b => b.onclick = () => espPedir(b.dataset.uesp.split(",").filter(Boolean), [], b.dataset.ue));
 }
 async function confirmarEmail(mail) {
   if (!confirm("¿Confirmar a mano el correo de " + mail + "? Podrá entrar con la contraseña que eligió, sin el email de confirmación.")) return;
@@ -1637,15 +1638,15 @@ async function adminMensajes() {
   const L = r.data || [], pend = L.filter(m => !m.resuelto).length, TN = { sugerencia: "💡 Sugerencia", reclamacion: "📣 Reclamación", error: "🐞 Error", otro: "Mensaje", especialidad: "✏️ Cambio de especialidad" };
   $("adm-msg-sum").textContent = "Sugerencias y reclamaciones" + (pend ? " (" + pend + " sin resolver)" : ""); adminBadge(pend);
   $("msg-res").textContent = L.length ? (pend ? pend + " sin resolver." : "No hay mensajes pendientes. 🎉") + (L.length - pend ? " Las resueltas están en el desplegable de abajo." : "") : "Todavía no hay mensajes.";
-  const fila = m => `<div class="it" style="${m.resuelto ? "opacity:.55" : ""}"><div class="a"><b>${TN[m.tipo] || "Mensaje"} · ${esc(new Date(m.creado).toLocaleString("es-ES", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }))}</b><small style="white-space:pre-wrap;color:var(--ink,inherit)">${esc(m.texto.replace(/\n?\[(ESP|PROF):[0-9A-Z,]+\]/g, ""))}</small><small>${m.email ? `<a href="mailto:${esc(m.email)}?subject=${encodeURIComponent("Sobre tu mensaje en DocentsCV")}">${esc(m.email)}</a>` : "Sin correo"}</small></div><div class="z">${m.tipo === "especialidad" && !m.resuelto && /\[ESP:([0-9,]+)\]/.test(m.texto) && m.email ? `<button type="button" class="btn" data-ap="${m.id}" data-em="${esc(m.email)}" data-esp="${esc(m.texto.match(/\[ESP:([0-9,]+)\]/)[1])}">✅ Aplicar cambio</button> ` : ""}<button type="button" class="dbtn" data-mid="${m.id}" data-r="${m.resuelto ? 0 : 1}">${m.resuelto ? "Reabrir" : "✔ Resuelto"}</button></div></div>`;
+  const fila = m => `<div class="it" style="${m.resuelto ? "opacity:.55" : ""}"><div class="a"><b>${TN[m.tipo] || "Mensaje"} · ${esc(new Date(m.creado).toLocaleString("es-ES", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }))}</b><small style="white-space:pre-wrap;color:var(--ink,inherit)">${esc(m.texto.replace(/\n?\[(ESP|PROF):[0-9A-Z,]+\]/g, ""))}</small><small>${m.email ? `<a href="mailto:${esc(m.email)}?subject=${encodeURIComponent("Sobre tu mensaje en DocentsCV")}">${esc(m.email)}</a>` : "Sin correo"}</small></div><div class="z">${m.tipo === "especialidad" && !m.resuelto && /\[ESP:([0-9,]*)\]/.test(m.texto) && m.email ? (e => `<button type="button" class="btn" data-ap="${m.id}" data-em="${esc(m.email)}" data-esp="${esc(e)}">${e ? "✅ Aplicar cambio (Maestros)" : "✅ Quitar sus especialidades de Maestros"}</button> `)(m.texto.match(/\[ESP:([0-9,]*)\]/)[1]) : ""}${m.tipo === "especialidad" && !m.resuelto && /\[PROF:/.test(m.texto) ? `<small class="note" style="display:block;margin:.3rem 0">Profesorado: no se cambia aquí; las bolsas salen de las listas oficiales.</small>` : ""}<button type="button" class="dbtn" data-mid="${m.id}" data-r="${m.resuelto ? 0 : 1}">${m.resuelto ? "Reabrir" : "✔ Resuelto"}</button></div></div>`;
   const hecho = L.filter(m => m.resuelto), abierto = !!(document.querySelector("#msg-lista details[open]"));
   $("msg-lista").innerHTML = L.filter(m => !m.resuelto).map(fila).join("") + (hecho.length ? `<details style="margin-top:.8rem"${abierto ? " open" : ""}><summary class="note" style="cursor:pointer">Resueltas (${hecho.length})</summary>${hecho.map(fila).join("")}</details>` : "");
 }
 document.addEventListener("click", async ev => { const b = ev.target.closest("[data-mid]"); if (!b) return; await sb.rpc("admin_mensaje_resuelto", { p_id: +b.dataset.mid, p_resuelto: b.dataset.r === "1" }); adminMensajes(); });
 document.addEventListener("click", async ev => {
   const b = ev.target.closest("[data-ap]"); if (!b) return;
-  const em = b.dataset.em, esp = b.dataset.esp.split(",");
-  if (!confirm("¿Cambiar las especialidades de " + em + " a " + esp.join(", ") + "?")) return;
+  const em = b.dataset.em, esp = b.dataset.esp.split(",").filter(Boolean);
+  if (!confirm(esp.length ? "¿Cambiar las especialidades de Maestros de " + em + " a " + esp.join(", ") + "?" : "¿Quitar todas las especialidades de Maestros de " + em + "?")) return;
   b.disabled = true;
   const { data, error } = await sb.rpc("admin_set_esp_maestros", { p_email: em, p_esp: esp });
   if (error || data !== "ok") { $("msg-res").innerHTML = `<span class="err">${esc(error ? error.message : data === "no_existe" ? "No hay ninguna cuenta con ese correo." : data)}</span>`; b.disabled = false; return; }
@@ -1979,7 +1980,7 @@ async function pedirEsp(forzar) {
 }
 
 const EP_FAM = [["secundaria", "Secundaria"], ["fp_especialistas", "FP · profesorado especialista"], ["idiomas", "Escuelas Oficiales de Idiomas"], ["catedraticos_musica", "Catedráticos de Música"], ["musica", "Música y Artes Escénicas"], ["artes_plasticas", "Artes Plásticas y Diseño"], ["taller_artes", "Maestros de Taller"]];
-function espPedir(actual, prof = []) {
+function espPedir(actual, prof = [], adm = null) {
   actual = actual || []; prof = prof || [];
   const chk = (e, on) => `<label style="display:flex;flex-direction:row;align-items:center;gap:.4rem;margin:.15rem 0;font-size:.92rem"><input type="checkbox" value="${esc(e.codigo)}" ${on ? "checked" : ""} style="min-width:0;width:1.05rem;height:1.05rem;flex:none;margin:0"> ${esc(e.codigo)} · ${esc(e.nombre)}</label>`;
   const mae = ESPU.filter(e => e.cuerpo === "maestros");
@@ -1999,8 +2000,18 @@ function espPedir(actual, prof = []) {
   filtro("ep-qm", "ep-ml"); filtro("ep-q", "ep-pl");
   const cuenta = () => ["ep-m", "ep-p"].forEach(id => { const n = $(id).querySelectorAll("input:checked").length; $(id).querySelector("[data-cnt]").textContent = n ? `· ${n} marcada${n === 1 ? "" : "s"}` : ""; });
   $("ep-list").onchange = cuenta; cuenta();
+  $("esp-dlg").querySelector("h2").textContent = adm ? "✏️ Especialidades de Maestros de " + adm : "✏️ Pedir cambio de especialidad";
+  $("ep-p").hidden = !!adm; $("ep-nota").closest("label").hidden = !!adm; $("ep-send").textContent = adm ? "Guardar" : "Enviar petición";
+  if (adm) $("ep-m").open = true;
   $("ep-st").textContent = ""; $("ep-nota").value = ""; $("ep-send").disabled = false; $("ep-ok").hidden = true; $("ep-form").hidden = false;
-  $("ep-send").onclick = async () => {
+  $("ep-send").onclick = adm ? async () => {
+    const sel = [...$("ep-m").querySelectorAll("input:checked")].map(i => i.value).sort(), st = $("ep-st");
+    $("ep-send").disabled = true; st.textContent = "Guardando…";
+    const { data, error } = await sb.rpc("admin_set_esp_maestros", { p_email: adm, p_esp: sel });
+    $("ep-send").disabled = false;
+    if (error || data !== "ok") { st.textContent = error ? "No se pudo (¿has ejecutado especialidades_admin.sql?): " + error.message : data === "no_existe" ? "No hay ninguna cuenta con ese correo." : data; return; }
+    $("esp-dlg").close(); adminUsuarios(); alert("✅ Especialidades de Maestros guardadas para " + adm + (sel.length ? ": " + sel.join(", ") : " (ninguna)."));
+  } : async () => {
     const selM = [...$("ep-m").querySelectorAll("input:checked")].map(i => i.value).sort(), selP = [...$("ep-p").querySelectorAll("input:checked")].map(i => i.value).sort();
     const actM = [...actual].sort(), actP = [...prof].sort(), st = $("ep-st");
     if (!selM.length && !selP.length) { st.textContent = "Marca al menos una especialidad."; return; }
@@ -2011,7 +2022,7 @@ function espPedir(actual, prof = []) {
       + (camM ? "\nMaestros · actuales: " + (actM.join(", ") || "ninguna") + " · pide: " + (selM.join(", ") || "ninguna") : "")
       + (camP ? "\nProfesorado · actuales: " + (actP.join(", ") || "ninguna") + " · pide: " + (selP.join(", ") || "ninguna") + " (revisar a mano: las bolsas salen de las listas oficiales)" : "")
       + (nota ? "\nNota: " + nota : "")
-      + (camM && selM.length ? "\n[ESP:" + selM.join(",") + "]" : "") + (camP && selP.length ? "\n[PROF:" + selP.join(",") + "]" : "");
+      + (camM ? "\n[ESP:" + selM.join(",") + "]" : "") + (camP && selP.length ? "\n[PROF:" + selP.join(",") + "]" : "");
     $("ep-send").disabled = true; st.textContent = "Enviando…";
     const { data, error } = await sb.rpc("enviar_mensaje", { p_tipo: "especialidad", p_texto: txt, p_email: null });
     if (!error && data === "ok") { $("ep-form").hidden = true; $("ep-ok").hidden = false; return; }
