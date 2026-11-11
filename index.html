@@ -1669,7 +1669,7 @@ function subirPdf(tipo, fileId, msgId, cuerpoFn) {
     try {
       const up = await sb.storage.from("pdfs").upload(path, f, { contentType: "application/pdf" }); if (up.error) throw up.error;
       const ins = await sb.from("importaciones").insert({ archivo: path, nombre_original: f.name, tipo, cuerpo: cuerpoFn(), creado_por: USER.id }); if (ins.error) throw ins.error;
-      msg("PDF subido. Se procesará automáticamente en unos 15 minutos; recarga esta lista para ver el resultado."); $(fileId).value = ""; adminLista();
+      msg("PDF subido. Se procesará automáticamente en la próxima revisión (normalmente en menos de una hora). Si lo necesitas ya: GitHub → docentscv-procesador → Actions → Procesar PDF pendientes → Run workflow. Recarga esta lista para ver el resultado."); $(fileId).value = ""; adminLista();
     } catch (e) { msg("No se pudo subir: " + e.message); }
   };
 }
