@@ -281,6 +281,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
         <label>Cuerpo <select id="of-cuerpo"></select></label>
         <label>Especialidad <select id="of-esp"></select></label>
         <label>Provincia <select id="of-prov"><option value="">Todas</option><option>Alicante</option><option>Castelló</option><option>València</option></select></label>
+        <label>Idioma <select id="of-ling"><option value="">Todas</option><option value="no">Sin requisito de idioma</option><option value="ing">En inglés</option><option value="otro">Otro requisito</option></select></label>
         <label>Localidad o centro <input id="of-q" type="search" placeholder="Filtrar"></label>
       </div>
       <p class="note" id="of-info" style="margin:.2rem 0 .5rem"></p>
@@ -296,6 +297,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
         <label>Cuerpo <select id="dc-cuerpo"></select></label>
         <label>Especialidad <select id="dc-esp"></select></label>
         <label>Provincia <select id="dc-prov"><option value="">Todas</option><option>Alicante</option><option>Castelló</option><option>València</option></select></label>
+        <label>Idioma <select id="dc-ling"><option value="">Todas</option><option value="no">Sin requisito de idioma</option><option value="ing">En inglés</option><option value="otro">Otro requisito</option></select></label>
         <label>Localidad o centro <input id="dc-q" type="search" placeholder="Filtrar"></label>
       </div>
       <p class="note" id="dc-info" style="margin:.2rem 0 .5rem"></p>
@@ -382,6 +384,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
         <label>Cuerpo <select id="ua-cuerpo"></select></label>
         <label>Especialidad <select id="ua-esp"></select></label>
         <label>Provincia <select id="ua-prov"><option value="">Todas</option><option>Alicante</option><option>Castelló</option><option>València</option></select></label>
+        <label>Idioma <select id="ua-ling"><option value="">Todas</option><option value="no">Sin requisito de idioma</option><option value="ing">En inglés</option><option value="otro">Otro requisito</option></select></label>
         <label>Localidad o centro <input id="ua-q" type="search" placeholder="Filtrar"></label>
       </div>
       <p class="note" id="ua-info" style="margin:.2rem 0 .5rem"></p>
@@ -1050,6 +1053,7 @@ async function cargarDif() {
   } catch (e) { return (DIF = { fecha: null, rows: [] }); }
 }
 const plazaTipo = r => r.tipo === "vacante" ? "Vacante" : /indeterm/i.test(r.detalle || "") ? "Sustitución indeterminada" : /determ/i.test(r.detalle || "") ? "Sustitución determinada" : "Sustitución";
+const lingOk = (r, lg) => { if (!lg) return true; const l = (r.req_ling || "").trim(); return lg === "no" ? !l : lg === "ing" ? /^ING/i.test(l) : !!l && !/^ING/i.test(l); };
 const plazaIng = r => { const l = (r.req_ling || "").replace(/\.$/, "").trim(); if (!l) return "No es en inglés"; const m = /^ING[-\s]?([ABC][12])/i.exec(l); return m ? "En inglés (" + m[1].toUpperCase() + ")" : "Req. " + l; };
 const reducida = r => r.horas != null && (r.hmax != null ? +r.horas < r.hmax : true) && !r.iti;
 const sitios = r => { const o = [], re = /(\d{8}):\s*(.+?)\s+(\d+(?:,\d+)?)\s*hores/g; let m; while ((m = re.exec(r.observ || ""))) o.push({ nom: m[2], h: m[3] }); return o; };
@@ -1085,8 +1089,8 @@ function difEsp() {
   $("dc-esp").innerHTML = '<option value="">Todas las especialidades</option>' + [...es.keys()].sort().map(c => `<option value="${esc(c)}">${esc(espNom("", c))}</option>`).join("");
 }
 function difPintar() {
-  const cu = $("dc-cuerpo").value, es = $("dc-esp").value, pv = $("dc-prov").value, q = $("dc-q").value.trim().toLowerCase();
-  const fil = DIF.rows.filter(r => (!cu || r.cuerpo === cu) && (!es || r.especialidad_codigo === es) && (!pv || r.provincia === pv) && (!q || ((r.centro || "") + " " + (r.localidad || "")).toLowerCase().includes(q)));
+  const cu = $("dc-cuerpo").value, es = $("dc-esp").value, pv = $("dc-prov").value, q = $("dc-q").value.trim().toLowerCase(); const lg = $("dc-ling").value;
+  const fil = DIF.rows.filter(r => (!cu || r.cuerpo === cu) && (!es || r.especialidad_codigo === es) && (!pv || r.provincia === pv) && lingOk(r, lg) && (!q || ((r.centro || "") + " " + (r.localidad || "")).toLowerCase().includes(q)));
   const nv = fil.filter(r => r.tipo === "vacante").length;
   $("dc-info").innerHTML = `<strong>${fil.length}</strong> plaza${fil.length === 1 ? "" : "s"} (${nv} vacante${nv === 1 ? "" : "s"}, ${fil.length - nv} sustitucion${fil.length - nv === 1 ? "" : "es"}).`;
   if (DIF.adjN) $("dc-info").innerHTML += ` <span style="color:var(--ok)">✔ ${fil.filter(r => DIF.adj.has(r.especialidad_codigo + "|" + r.codigo_plaza)).length} ya adjudicada${fil.filter(r => DIF.adj.has(r.especialidad_codigo + "|" + r.codigo_plaza)).length === 1 ? "" : "s"}.</span>`;
@@ -1095,7 +1099,7 @@ function difPintar() {
   $("dc-body").innerHTML = fil.length ? [...gr].map(([e, rs]) => `<div class="note" style="margin:.9rem 0 .2rem"><strong>${esc(espNom("", e))}</strong> — ${rs.length} plaza${rs.length === 1 ? "" : "s"}</div>` + rs.map(difItem).join("")).join("") : '<p class="note">No hay plazas con esos filtros.</p>';
 }
 $("dc-cuerpo").addEventListener("change", () => { difEsp(); difPintar(); });
-["dc-esp", "dc-prov"].forEach(id => $(id).addEventListener("change", difPintar));
+["dc-esp", "dc-prov", "dc-ling"].forEach(id => $(id).addEventListener("change", difPintar));
 $("dc-q").addEventListener("input", () => { clearTimeout(window.__dcT); window.__dcT = setTimeout(difPintar, 300); });
 async function difMias(pan, espMia) {
   const o = await cargarDif();
@@ -1119,8 +1123,8 @@ function ofEsp() {
   $("of-esp").innerHTML = '<option value="">Todas las especialidades</option>' + [...es.keys()].sort().map(c => `<option value="${esc(c)}">${esc(espNom("", c))}</option>`).join("");
 }
 function ofPintar() {
-  const cu = $("of-cuerpo").value, es = $("of-esp").value, pv = $("of-prov").value, q = $("of-q").value.trim().toLowerCase();
-  const fil = OFER.rows.filter(r => (!cu || r.cuerpo === cu) && (!es || r.especialidad_codigo === es) && (!pv || r.provincia === pv) && (!q || ((r.centro || "") + " " + (r.localidad || "")).toLowerCase().includes(q)));
+  const cu = $("of-cuerpo").value, es = $("of-esp").value, pv = $("of-prov").value, q = $("of-q").value.trim().toLowerCase(); const lg = $("of-ling").value;
+  const fil = OFER.rows.filter(r => (!cu || r.cuerpo === cu) && (!es || r.especialidad_codigo === es) && (!pv || r.provincia === pv) && lingOk(r, lg) && (!q || ((r.centro || "") + " " + (r.localidad || "")).toLowerCase().includes(q)));
   const nv = fil.filter(r => r.tipo === "vacante").length;
   $("of-info").innerHTML = `<strong>${fil.length}</strong> plaza${fil.length === 1 ? "" : "s"} (${nv} vacante${nv === 1 ? "" : "s"}, ${fil.length - nv} sustitucion${fil.length - nv === 1 ? "" : "es"}). ${ofertaVigente() ? "Se adjudican el " + fmtF(OFER.fecha) + "." : "Adjudicación del " + fmtF(OFER.fecha) + "."}${OFER.version === "prov" ? " Lista provisional." : ""}`;
   const gr = new Map(); fil.forEach(r => { if (!gr.has(r.especialidad_codigo)) gr.set(r.especialidad_codigo, []); gr.get(r.especialidad_codigo).push(r); });
@@ -1131,7 +1135,7 @@ function ofPintar() {
   }).join("") : '<p class="note">No hay plazas con esos filtros.</p>';
 }
 $("of-cuerpo").addEventListener("change", () => { ofEsp(); ofPintar(); });
-["of-esp", "of-prov"].forEach(id => $(id).addEventListener("change", ofPintar));
+["of-esp", "of-prov", "of-ling"].forEach(id => $(id).addEventListener("change", ofPintar));
 $("of-q").addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(ofPintar, 300); });
 
 /* ---------- Mi apartado: última adjudicación ordenada por distancia al domicilio ---------- */
@@ -1152,8 +1156,8 @@ function uaEsp() {
 }
 function uaPintar() {
   if (!OFER || !OFER.fecha) return;
-  const cu = $("ua-cuerpo").value, es = $("ua-esp").value, pv = $("ua-prov").value, q = $("ua-q").value.trim().toLowerCase();
-  const fil = OFER.rows.filter(r => (!cu || r.cuerpo === cu) && (!es || r.especialidad_codigo === es) && (!pv || r.provincia === pv) && (!q || ((r.centro || "") + " " + (r.localidad || "")).toLowerCase().includes(q)));
+  const cu = $("ua-cuerpo").value, es = $("ua-esp").value, pv = $("ua-prov").value, q = $("ua-q").value.trim().toLowerCase(); const lg = $("ua-ling").value;
+  const fil = OFER.rows.filter(r => (!cu || r.cuerpo === cu) && (!es || r.especialidad_codigo === es) && (!pv || r.provincia === pv) && lingOk(r, lg) && (!q || ((r.centro || "") + " " + (r.localidad || "")).toLowerCase().includes(q)));
   const km = r => { const d = distInfo(r.centro_codigo); return d ? d.km : 1e9; };
   fil.sort((a, b) => (DOM ? km(a) - km(b) : 0) || (a.localidad || "").localeCompare(b.localidad || "") || (a.centro || "").localeCompare(b.centro || ""));
   window.__uaFil = fil; mapaRefrescar("ua");
@@ -1166,7 +1170,7 @@ function uaPintar() {
   if ($("ua-mas")) $("ua-mas").onclick = () => { UA_N += 100; uaPintar(); };
 }
 $("ua-cuerpo").addEventListener("change", () => { UA_N = 100; uaEsp(); uaPintar(); });
-["ua-esp", "ua-prov"].forEach(id => $(id).addEventListener("change", () => { UA_N = 100; uaPintar(); }));
+["ua-esp", "ua-prov", "ua-ling"].forEach(id => $(id).addEventListener("change", () => { UA_N = 100; uaPintar(); }));
 $("ua-q").addEventListener("input", () => { clearTimeout(window.__uaT); window.__uaT = setTimeout(() => { UA_N = 100; uaPintar(); }, 300); });
 /* ---------- CUENTAS (Supabase Auth) ---------- */
 function initAuth() {
@@ -1655,7 +1659,7 @@ function charts(h) {
        + (b ? `<div class="note" style="margin:.4rem 0 0"><strong>Competidores por delante</strong> (más arriba = menos competidores)</div>${b}` : "");
 }
 const fmtH = h => h == null ? "Completa" : String(+h).replace(".", ",");
-function tarjeta(r, hist, alc) {
+function tarjeta(r, hist, alc, ua) {
   const ini = hist.find(x => x.tipo === "inicio_curso"), d = r.delante || {}, mae = r.cuerpo === "maestros";
   const TEMA = { 1: ["ok", "ok", "🎉", "¡Tienes plaza!"], 2: ["amb", "amb", "⏳", "Sigues compitiendo"], 3: ["blu", "blu", "📋", "Sigues en la lista"], 4: ["red", "red", "⚠️", "No confirmaste a tiempo"], 5: ["gry", "gry", "⏸️", "Desactivado en esta bolsa"] };
   const [cv, , ico, titulo] = TEMA[r.estado] || TEMA[3];
@@ -1683,6 +1687,9 @@ function tarjeta(r, hist, alc) {
   const act = mae
     ? `La lista de Maestros ha adjudicado ${r.adj_total} plazas en ${r.tandas} tandas (todas las especialidades).`
     : `Tu bolsa ha ofrecido ${r.adj_total} plaza${r.adj_total === 1 ? "" : "s"} en ${r.tandas_con_adj} de ${r.tandas} tandas (media de ${(r.adj_total / (r.tandas || 1)).toFixed(1)} por tanda; ${r.act} en las 3 últimas).`;
+  const nReal = 1 + Object.values(d).reduce((t, v) => t + (+v || 0), 0);
+  const uaTxt = ua && !mae && ua.pos_ult ? ` Último adjudicado de tu bolsa (${fmtF(ua.fecha)}): puesto <strong>${ua.pos_ult}</strong>. ${r.posicion > ua.pos_ult ? `Te separan <strong>${r.posicion - ua.pos_ult}</strong> puesto${r.posicion - ua.pos_ult === 1 ? "" : "s"}.` : "Tu puesto ya entra en la zona donde se está adjudicando."}` : "";
+  const real = `<p class="note">Tu puesto en la bolsa es el <strong>${r.posicion}</strong>. Sin contar a los desactivados, eres el <strong>${nReal}º</strong> de los disponibles en esta lista.${uaTxt}</p>`;
   let al = "";
   if (mae) {
     al = alc && alc.length ? `<div class="sc-p" style="--pc:var(--blu);--pb:var(--blu-bg)"><div class="t">Hasta dónde se llega en tus especialidades</div><ul class="l" style="margin:.4rem 0 0">${alc.map(a => {
@@ -1690,7 +1697,7 @@ function tarjeta(r, hist, alc) {
       return `<li><span class="tag">${lv}</span> <strong>${esc(a.especialidad_codigo)} · ${esc(a.especialidad)}</strong>: ${a.adj_total} adjudicaciones en las últimas ${a.tandas} tandas. La última llegó hasta alguien con ${a.x_max_ultima ?? "—"} competidores por delante (tú tienes ${a.x_mio}); en ${a.tandas_alcanzado} de ${a.tandas} tandas se llegó tan lejos como tú.</li>`;
     }).join("")}</ul></div>` : '<p class="note" style="padding:0 1rem">Elige abajo tus especialidades de Maestros para ver hasta dónde se llega en cada una.</p>';
   }
-  return `<div class="sc" style="${vars}">${cab}${st(EST_TXT[r.estado] || "")}${k}${prob}${al}<div class="sc-b">${otras ? `<p class="note">Por delante de ti: ${r.x} compiten (pidieron plazas ofertadas y no las consiguieron) · ${otras}.</p>` : ""}${ausente}<p class="note">${esc(act)}</p>${charts(hist)}</div></div>`;
+  return `<div class="sc" style="${vars}">${cab}${st(EST_TXT[r.estado] || "")}${k}${prob}${al}<div class="sc-b">${otras ? `<p class="note">Por delante de ti: ${r.x} compiten (pidieron plazas ofertadas y no las consiguieron) · ${otras}.</p>` : ""}${ausente}${real}<p class="note">${esc(act)}</p>${charts(hist)}</div></div>`;
 }
 
 async function oportunidades(pan, espMia) {
@@ -1846,8 +1853,9 @@ async function situacion() {
   }
   const alc = hayMae && esp.length ? ((await sb.rpc("mi_alcance_maestros")).data || []) : [];
 
+  let UA = []; try { UA = (await sb.rpc("mi_ultimo_adjudicado")).data || []; } catch (e) {}
   $("s-cards").innerHTML = pan.length
-    ? pan.map(r => tarjeta(r, histDe(r), r.cuerpo === "maestros" ? alc : null)).join("")
+    ? pan.map(r => tarjeta(r, histDe(r), r.cuerpo === "maestros" ? alc : null, UA.find(u => u.lista_id === r.lista_id))).join("")
     : '<div class="panel">No hemos encontrado tu nombre en las listas cargadas.</div>';
   oportunidades(pan, esp); difMias(pan, esp);
   const ult = pan.length ? pan.map(r => r.ult_tanda).sort().pop() : null;
