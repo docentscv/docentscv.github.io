@@ -79,6 +79,10 @@ body{padding-bottom:calc(4.9rem + env(safe-area-inset-bottom,0px));overscroll-be
 #esp-dlg{border:0;border-radius:14px;padding:1.1rem;width:min(92vw,34rem);max-height:90vh;overflow:auto;box-shadow:0 10px 40px #0006}#esp-dlg::backdrop{background:#0008}#esp-dlg textarea{min-height:4rem;font:inherit;padding:.5rem;border-radius:8px;border:1px solid var(--line,#ccd);width:100%;box-sizing:border-box}
 .who-btn{position:relative}.who-btn.pend::after{content:attr(data-n);position:absolute;top:-.35rem;right:-.45rem;min-width:1.25rem;height:1.25rem;padding:0 .25rem;box-sizing:border-box;border-radius:1rem;background:#d33;color:#fff;font:700 .72rem/1.25rem var(--body);text-align:center;border:2px solid var(--bg,#fff)}
 #adm-dlg{border:0;border-radius:14px;padding:1.1rem;width:min(92vw,34rem);max-height:90vh;overflow:auto;box-shadow:0 10px 40px #0006}#adm-dlg::backdrop{background:#0008}
+#cf-dlg{border:0;border-radius:14px;padding:1.1rem;width:min(92vw,36rem);max-height:90vh;overflow:auto;box-shadow:0 10px 40px #0006}#cf-dlg::backdrop{background:#0008}
+#cf-dlg .cf-k{display:grid;grid-template-columns:repeat(auto-fit,minmax(7.5rem,1fr));gap:.5rem;margin:.6rem 0}#cf-dlg .cf-k div{background:var(--paper);border-radius:.6rem;padding:.5rem .7rem}#cf-dlg .cf-k b{display:block;font:800 1.6rem/1.1 var(--display)}#cf-dlg .cf-k small{color:var(--muted);font-size:.78rem}
+.fresh{font-size:.85rem;opacity:.9;margin:.6rem 0 0}
+#spx-tab td,#spx-tab th{padding:.3rem .5rem}
 #msg-dlg{border:0;border-radius:14px;padding:1.1rem;width:min(92vw,30rem);box-shadow:0 10px 40px #0006}#msg-dlg::backdrop{background:#0008}
 #msg-dlg label{display:flex;flex-direction:column;gap:.25rem;margin:.6rem 0;font-size:.92rem}#msg-dlg textarea{min-height:7rem;font:inherit;padding:.5rem;border-radius:8px;border:1px solid var(--line)}
 .dbtn{margin-top:.15rem;padding:.05rem .6rem;border-radius:99px;border:1px solid var(--blu);background:var(--blu-bg);color:var(--blu);font:700 .8rem var(--body);cursor:pointer;white-space:nowrap}
@@ -245,6 +249,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
       <h1>Descubre tus <em>opciones reales</em> de conseguir plaza</h1>
       <p>Las últimas adjudicaciones al instante, tu posición en la bolsa y la probabilidad de que te toque.</p>
       <div class="g" id="home-stats"><div><b>—</b><small>plazas en la última tanda</small></div><div><b>—</b><small>fecha de la última tanda</small></div></div>
+      <p class="fresh" id="fresh-home"></p>
       <div class="cta"><button class="btn big" data-go="apartado">🎯 Ver mi posición</button><button class="btn ghost" data-go="consulta">Consultar adjudicaciones</button></div>
     </section>
     <h2 class="sec">Hoy en las listas</h2>
@@ -269,6 +274,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
     <div class="top"><div class="brand">Docents<b>CV</b></div></div>
     <h1>Consulta</h1>
     <div class="hero" id="hero"><div class="skel sk-hero" style="background:rgba(255,255,255,.18)"></div></div>
+    <p class="note" id="fresh-cons" style="margin:.4rem 0 0"></p>
 
     <div class="sc" id="ref-cons" style="--c:var(--ok);--cb:var(--ok-bg);margin:1rem 0"><div class="sc-st"><i>🎁</i><div>Invita a tus compañeros y consigue la app gratis<small>Si 3 personas se registran con tu código y pagan, tu curso es gratis. Con los <span class="dp">7</span> días de prueba tienes tiempo de sobra para invitar a todos los que puedas.</small></div></div>
       <div class="sc-b"><button class="btn" id="ref-cons-go">Quiero mi código</button></div></div>
@@ -404,6 +410,11 @@ details.panel[open]>summary{margin-bottom:.8rem}
       <div class="panel" id="oport-panel"><h2>Tus oportunidades por centro</h2>
         <p class="note" style="margin:0 0 .6rem">Elige un centro de las últimas adjudicaciones y mira, tanda a tanda, si habrías ido por delante de la persona que se llevó esa plaza. «Por delante» significa que, si la hubieras pedido, te habría correspondido antes a ti (siempre que no te dieran otra que prefieres más). Cuando carguemos los PDF de las plazas que ofertará la Conselleria, aparecerán también en este desplegable.</p>
         <div id="oport-body"></div></div>
+      <div class="panel" id="spx-panel" hidden><h2>🧪 Simulador de petición</h2>
+        <p class="note" style="margin:0 0 .6rem">¿Qué habría pasado en las últimas tandas si hubieras pedido plazas en estas provincias o hasta esta distancia? Contamos las tandas en las que se adjudicó, dentro de tu selección, alguna plaza de tu bolsa a alguien que iba <strong>por detrás</strong> de ti: si la hubieras pedido, te habría tocado a ti.</p>
+        <div class="filters" id="spx-f"></div>
+        <div id="spx-body"></div>
+        <p class="note" style="margin:.6rem 0 0"><em>Es una estimación, no una certeza:</em> mira lo que ya pasó y no tiene en cuenta requisitos como el idioma ni otras plazas que hubieras preferido. Las próximas tandas pueden ser distintas.</p></div>
       <div class="panel" id="mae-esp" hidden><h2>Tus especialidades de Maestros</h2>
         <p class="note" style="margin:0 0 .6rem">Elígelas para ver las adjudicaciones que te interesan.</p>
         <div id="mae-list" class="filters"></div><button class="btn" id="mae-save">Guardar</button></div>
@@ -530,6 +541,10 @@ details.panel[open]>summary{margin-bottom:.8rem}
     <p class="note" id="ep-st" role="status" style="margin:.2rem 0"></p>
     <button class="btn" id="ep-send" type="button">Enviar petición</button></div>
   <div id="ep-ok" hidden><h2 style="margin:0 0 .4rem">¡Hecho! 🙌</h2><p style="margin:0 0 .8rem">Hemos enviado tu petición a administración. La cambiaremos lo antes posible.</p><button class="btn" id="ep-cerrar" type="button">Cerrar</button></div>
+</dialog>
+<dialog id="cf-dlg">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem"><h2 style="margin:0;font-size:1.25rem" id="cf-t">Centro</h2><button class="link" id="cf-x" type="button" aria-label="Cerrar">✕</button></div>
+  <div id="cf-b"><p class="note">Cargando…</p></div>
 </dialog>
 <dialog id="msg-dlg">
       <div id="msg-form"><div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0;font-size:1.25rem">💬 Sugerencias y reclamaciones</h2><button class="link" id="msg-x" type="button" aria-label="Cerrar">✕</button></div>
@@ -884,7 +899,7 @@ async function mapaRefrescar(pre) {
     const html = `<b>${esc(c.nombre || cod)}</b><br>${esc(c.localidad || "")}<br>${rs.length} plaza${rs.length === 1 ? "" : "s"}: ${[...ge].map(([e, n]) => esc(espNom("", e)) + (n > 1 ? " ×" + n : "")).join(", ")}<br>`;
     const mk = L.circleMarker(pos, { radius: 6 + Math.min(rs.length, 8), color: "#0F7B8A", weight: 2, fillColor: "#0F7B8A", fillOpacity: .55 }).addTo(m.capa);
     mk.bindPopup(() => {
-      const d = document.createElement("div"); d.innerHTML = html + `<button type="button" class="dbtn" data-c="${esc(cod)}">📍 Distancia</button>${favBtn({ centro_codigo: cod })}`;
+      const d = document.createElement("div"); d.innerHTML = html + `<button type="button" class="dbtn" data-c="${esc(cod)}">📍 Distancia</button>${favBtn({ centro_codigo: cod })} ${fichaBtn({ centro_codigo: cod })}`;
       d.querySelector(".dbtn").onclick = ev => { ev.stopPropagation(); distPulsar(cod); };
       const f = d.querySelector(".fbtn"); if (f) f.onclick = ev => { ev.stopPropagation(); favPulsar(f); };
       return d;
@@ -1072,7 +1087,8 @@ const jornadaTag = r => {
   return (mae && j[0] ? `<span class="tag" title="Horario del centro: ${j[0] === "C" ? "jornada completa (continua)" : "jornada partida"}">${j[0] === "C" ? "🕘 Jornada completa" : "🕑 Jornada partida"}</span>` : "")
     + (/^https?:\/\//.test(j[1] || "") ? `<a class="tag" href="${esc(j[1])}" target="_blank" rel="noopener" title="Web del centro">🌐 Web del centro</a>` : "");
 };
-const plazaTags = r => `<span class="tag">${plazaTipo(r)}</span>${jornadaTag(r)}${r.iti ? `<span class="tag itin">🚗 Itinerante${sitios(r).length > 1 ? " · " + sitios(r).length + " centros" : ""}</span>` : ""}${reducida(r) ? `<span class="tag red">⏱ Jornada reducida · ${fmtH(r.horas)} h</span>` : ""}${r.req_ling ? `<span class="tag ing">${esc(plazaIng(r))}</span>` : ""}`;
+const fichaBtn = r => r.centro_codigo ? `<button type="button" class="tag" data-ficha="${esc(r.centro_codigo)}" style="border:0;cursor:pointer;background:var(--blu-bg);color:var(--blu)" title="Ver la ficha del centro">🏫 Ficha</button>` : "";
+const plazaTags = r => `<span class="tag">${plazaTipo(r)}</span>${fichaBtn(r)}${jornadaTag(r)}${r.iti ? `<span class="tag itin">🚗 Itinerante${sitios(r).length > 1 ? " · " + sitios(r).length + " centros" : ""}</span>` : ""}${reducida(r) ? `<span class="tag red">⏱ Jornada reducida · ${fmtH(r.horas)} h</span>` : ""}${r.req_ling ? `<span class="tag ing">${esc(plazaIng(r))}</span>` : ""}`;
 const reqOtra = r => r.req_ling && !/^ING/i.test(r.req_ling.trim()) ? " · req. " + esc(r.req_ling.replace(/\.$/, "")) : "";
 const difItem = r => `<div class="it"><div class="a"><b>${esc(r.centro || r.centro_codigo)}</b><small>${esc(r.localidad || "")}${reqOtra(r)}${obsTxt(r)}${distBtn(r)}${favBtn(r)}${segBtn(r)}</small></div><div class="z tg">${DIF && DIF.adj && DIF.adj.has(r.especialidad_codigo + "|" + r.codigo_plaza) ? '<span class="tag" style="background:var(--ok-bg);color:var(--ok)">✔ Adjudicada</span> ' : ""}${plazaTags(r)}</div></div>`;
 async function difInit() {
@@ -1236,22 +1252,34 @@ async function accesoInfo() {
   try { const { data, error } = await sb.rpc("mi_acceso"); if (!error && data) return data; } catch (e) {}
   return { cobro_activo: false, activo: true };
 }
+async function valorPrueba() {
+  const box = $("acc-valor"); if (!box || !sb) return;
+  try {
+    const { data: v, error } = await sb.rpc("mi_valor_prueba"); if (error || !v) return;
+    const p = [];
+    if (v.plazas) p.push(`<strong>${v.plazas}</strong> plaza${v.plazas === 1 ? "" : "s"} ofertada${v.plazas === 1 ? "" : "s"} en tus bolsas`);
+    if (v.cerca) p.push(`<strong>${v.cerca}</strong> de ellas a menos de ${v.km} km de casa`);
+    if (v.listas) p.push(`<strong>${v.listas}</strong> lista${v.listas === 1 ? "" : "s"} de adjudicación analizada${v.listas === 1 ? "" : "s"} para ti`);
+    if (!p.length) return;
+    box.innerHTML = `<p style="margin:.6rem 1rem;padding:.6rem .8rem;border-radius:.6rem;background:var(--paper)">📈 <strong>Desde el ${fmtF(v.desde)}</strong>, DocentsCV ha seguido por ti: ${p.join(" · ")}.</p>`;
+  } catch (e) {}
+}
 function pintarAcceso(ac) {
   const box = $("acc-box"), pr = String(ac.precio || "4.99").replace(".", ","), fin = ac.fin_curso ? fmtF(ac.fin_curso) : "";
   if (ac.gratis_referidos) { box.innerHTML = `<div class="sc" style="--c:var(--ok);--cb:var(--ok-bg);margin-top:1rem"><div class="sc-st"><i>🎉</i><div>Tienes la app gratis este curso<small>Gracias por invitar a 3 personas${fin ? ". Acceso hasta el " + fin : ""}.</small></div></div></div>`; return; }
   if (!ac.cobro_activo || (ac.activo && !ac.en_prueba)) { box.innerHTML = ""; return; }
   if (ac.activo) {
     const n = ac.dias_restantes;
-    box.innerHTML = `<div class="sc" style="--c:var(--amb);--cb:var(--amb-bg);margin-top:1rem"><div class="sc-st"><i>🎁</i><div>Prueba gratuita: te ${n === 1 ? "queda 1 día" : "quedan " + n + " días"}<small>Después, ${pr} € por todo el curso${fin ? " (hasta el " + fin + ")" : ""}. Pago único, sin renovación automática.</small></div></div></div>`;
-    return;
+    box.innerHTML = `<div class="sc" style="--c:var(--amb);--cb:var(--amb-bg);margin-top:1rem"><div class="sc-st"><i>🎁</i><div>Prueba gratuita: te ${n === 1 ? "queda 1 día" : "quedan " + n + " días"}<small>Después, ${pr} € por todo el curso${fin ? " (hasta el " + fin + ")" : ""}. Pago único, sin renovación automática.</small></div></div><div id="acc-valor"></div></div>`;
+    valorPrueba(); return;
   }
   box.innerHTML = `<div class="sc" style="--c:var(--blu);--cb:var(--blu-bg);margin-top:1rem"><div class="sc-h"><b>Tu prueba gratuita ha terminado</b><span>Sigue viendo tu situación en las bolsas</span></div>
-    <div class="sc-b"><ul class="l" style="margin:.4rem 0"><li>Tu puesto y cómo evoluciona en cada bolsa</li><li>Probabilidad de conseguir plaza</li><li>Oportunidades por centro y últimas adjudicaciones</li><li>Hasta dónde se llegó otros años</li></ul>
+    <div class="sc-b"><div id="acc-valor"></div><ul class="l" style="margin:.4rem 0"><li>Tu puesto y cómo evoluciona en cada bolsa</li><li>Probabilidad de conseguir plaza</li><li>Oportunidades por centro y últimas adjudicaciones</li><li>Hasta dónde se llegó otros años</li></ul>
     <div class="sc-p" style="--pc:var(--blu);--pb:var(--blu-bg)"><div class="t">Todo el curso</div><div class="v">${pr} €</div><div class="d">${pr === "4,99" ? "Precio especial por incorporarte a mitad de curso. " : ""}Pago único${fin ? ", con acceso hasta el " + fin : ""}. Sin renovación automática.</div></div>
     <p style="margin:1rem 0 .3rem"><button class="btn" id="pagar" style="font-size:1.1rem;padding:.7rem 1.4rem">Pagar ${pr} €</button></p>
     <p class="note" id="pagar-msg" role="status"></p></div></div>`;
   $("pagar").onclick = () => pagarPlay(false);
-  restaurarCompra(true);
+  restaurarCompra(true); valorPrueba();
 }
 
 /* ---------- Pago con Google Play (solo dentro de la app de Android) ---------- */
@@ -1418,6 +1446,7 @@ async function renderApartado() {
   $("ajustes").hidden = false; await geoCargar();
   $("ajustes-body").innerHTML = `<p class="note" style="margin:0 0 .4rem">Si hay un error en tu nombre o especialidades, escríbenos para corregirlo.</p>
     <label class="chk"><input type="checkbox" id="av-chk" disabled><span>Avisarme por email cuando salgan plazas ofertadas en mis bolsas</span></label><p class="note" id="av-msg" role="status" style="margin:.2rem 0 0"></p>
+    <label class="chk"><input type="checkbox" id="rs-chk" disabled><span>📊 Mandarme un resumen semanal (domingo por la tarde): cómo ha cambiado mi puesto y cuántas plazas han salido en mis bolsas</span></label><p class="note" id="rs-msg" role="status" style="margin:.2rem 0 0"></p>
     <div class="panel" id="push-box" style="margin:.8rem 0 0"><b>🔔 Avisos en este dispositivo</b><p class="note" id="push-txt" style="margin:.3rem 0 .5rem">Comprobando…</p><button class="btn" id="push-btn" hidden>Activar notificaciones</button></div>
     <div class="panel" id="dom-box" style="margin:.8rem 0 0"><b>📍 Mi domicilio</b>
       <p class="note" style="margin:.3rem 0 .5rem">Sirve para calcular la distancia y el tiempo hasta cada centro. Solo guardamos una ubicación aproximada (coordenadas), <strong>no la dirección escrita</strong>. Puedes borrarla cuando quieras.</p>
@@ -1441,6 +1470,13 @@ async function renderApartado() {
     const pf = (await sb.from("perfiles").select("avisos").eq("id", USER.id).maybeSingle()).data;
     const chk = $("av-chk"); chk.checked = !!(pf && pf.avisos === true); chk.disabled = false;
     chk.onchange = async () => { const { error } = await sb.from("perfiles").upsert({ id: USER.id, avisos: chk.checked }); $("av-msg").textContent = error ? "No se pudo guardar: " + error.message : (chk.checked ? "Avisos activados." : "Avisos desactivados."); };
+  } catch (e) {}
+  try {
+    const rs = $("rs-chk"), r0 = await sb.rpc("mi_resumen_activo");
+    if (!r0.error) {
+      rs.checked = r0.data !== false; rs.disabled = false;
+      rs.onchange = async () => { const { data, error } = await sb.rpc("guardar_resumen", { p_on: rs.checked }); $("rs-msg").textContent = error || data !== "ok" ? "No se pudo guardar." : (rs.checked ? "Resumen semanal activado. Te llega por notificación (si la tienes activa) y por email (si tienes marcados los avisos por email)." : "Resumen semanal desactivado."); };
+    } else $("rs-msg").textContent = "Disponible en breve.";
   } catch (e) {}
   pushInit(); domInit(); refInit();
   if (ADMIN && $("adesp")) $("adesp").onclick = () => pedirEsp(true);
@@ -1746,6 +1782,82 @@ function tarjeta(r, hist, alc, ua) {
   return `<div class="sc" style="${vars}">${cab}${st(EST_TXT[r.estado] || "")}${k}${prob}${al}<div class="sc-b">${otras ? `<p class="note">Por delante de ti: ${r.x} compiten (pidieron plazas ofertadas y no las consiguieron) · ${otras}.</p>` : ""}${ausente}${real}<p class="note">${esc(act)}</p>${charts(hist)}</div></div>`;
 }
 
+/* ---------- Ficha del centro ---------- */
+const CF_TIPO = [[/^CEIP|^CEE?IP|^CP /i, "Colegio de Infantil y Primaria"], [/^CRA/i, "Colegio Rural Agrupado (varias localidades)"], [/^CEE/i, "Centro de Educación Especial"], [/^IES/i, "Instituto de Educación Secundaria"],
+  [/^CIPFP|^CIFP/i, "Centro Integrado de Formación Profesional"], [/^EOI/i, "Escuela Oficial de Idiomas"], [/^CFPA|^FPA/i, "Formación de Personas Adultas"], [/^CONSERVATORI|^CMP|^CPM|^CSM/i, "Conservatorio"], [/^EA |^EASD|^ESCOLA D'ART/i, "Escuela de Arte"], [/^SPE|^SERVEI/i, "Servicio psicopedagógico"]];
+const cfTipo = n => (CF_TIPO.find(([re]) => re.test(n || "")) || [null, ""])[1];
+async function fichaAbrir(cod) {
+  const dlg = $("cf-dlg"), b = $("cf-b"); $("cf-t").textContent = "Centro"; b.innerHTML = '<p class="note">Cargando…</p>';
+  if (!dlg.open) dlg.showModal();
+  let f = null;
+  try {
+    const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/ficha_centro", { method: "POST", headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ p_codigo: cod }) });
+    if (r.ok) f = await r.json();
+  } catch (e) {}
+  if (!f) { b.innerHTML = '<p class="note">No hemos podido cargar la ficha de este centro.</p>'; return; }
+  CEN[cod] = CEN[cod] || { codigo: cod, nombre: f.nombre, localidad: f.localidad, provincia: f.provincia, lat: f.lat, lon: f.lon, direccion: f.direccion, cp: f.cp };
+  const j = JINFO[cod], tipo = cfTipo(f.nombre), mae = /^(CEIP|CRA|CEE|CP )/i.test(f.nombre || "");
+  const dir = [f.direccion, [f.cp, f.localidad].filter(Boolean).join(" "), f.provincia].filter(Boolean).join(", ");
+  $("cf-t").textContent = f.nombre;
+  b.innerHTML = `<p style="margin:.3rem 0">${tipo ? `<span class="tag" style="background:var(--gry-bg);color:var(--ink)">${esc(tipo)}</span> ` : ""}${j && mae && j[0] ? `<span class="tag">${j[0] === "C" ? "🕘 Jornada completa" : "🕑 Jornada partida"}</span> ` : ""}<span class="note">Código ${esc(cod)}</span></p>
+    <p style="margin:.3rem 0">📍 ${esc(dir || f.localidad || "")}</p>
+    ${distLinea(cod)}
+    <div class="filters" style="margin:.4rem 0">${j && /^https?:\/\//.test(j[1] || "") ? `<a class="btn" href="${esc(j[1])}" target="_blank" rel="noopener" style="text-decoration:none">🌐 Web del centro</a>` : ""}<a class="btn" style="text-decoration:none;background:var(--surface);color:var(--accent);border:2px solid var(--accent)" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([f.nombre, dir].filter(Boolean).join(", "))}" target="_blank" rel="noopener">🗺️ Ver en el mapa</a></div>
+    <h3 style="margin:.9rem 0 .2rem;font:600 1rem var(--body)">Este curso (desde el ${fmtF(f.desde)})</h3>
+    <div class="cf-k"><div><b>${f.ofertadas}</b><small>plazas ofertadas${f.ofertadas ? ` (${f.ofertadas_vac} vacante${f.ofertadas_vac === 1 ? "" : "s"})` : ""}</small></div><div><b>${f.continuas}</b><small>adjudicadas en continuas</small></div><div><b>${f.inicio_curso}</b><small>adjudicadas al inicio de curso</small></div>${f.dificil ? `<div><b>${f.dificil}</b><small>de difícil cobertura</small></div>` : ""}</div>
+    ${f.ult_oferta || f.ult_continua ? `<p class="note" style="margin:.2rem 0">${f.ult_oferta ? `Última oferta: ${fmtF(f.ult_oferta)}. ` : ""}${f.ult_continua ? `Última adjudicación continua: ${fmtF(f.ult_continua)}.` : ""}</p>` : ""}
+    ${(f.especialidades || []).length ? `<p style="margin:.6rem 0 .2rem"><strong>Especialidades con más movimiento</strong></p><ul class="l" style="margin:0">${f.especialidades.map(e => `<li>${esc(e.codigo)} · ${esc(e.nombre)} <span class="note">(${e.n})</span></li>`).join("")}</ul>` : '<p class="note">Este curso todavía no ha tenido plazas ofertadas ni adjudicadas.</p>'}
+    <p class="note" style="margin:.8rem 0 0">Datos de los listados oficiales de la Conselleria cargados en DocentsCV. Para el teléfono y el horario exacto, consulta la web del centro o llámales.</p>`;
+}
+document.addEventListener("click", ev => { const b = ev.target.closest("[data-ficha]"); if (!b) return; ev.preventDefault(); ev.stopPropagation(); fichaAbrir(b.dataset.ficha); });
+$("cf-x").onclick = () => $("cf-dlg").close();
+$("cf-dlg").addEventListener("click", ev => { if (ev.target === $("cf-dlg")) $("cf-dlg").close(); });
+
+/* ---------- «Actualizado hace…» ---------- */
+function haceTxt(ts) {
+  const m = Math.round((Date.now() - new Date(ts)) / 60000);
+  return m < 2 ? "hace un momento" : m < 60 ? `hace ${m} min` : m < 1440 ? `hace ${Math.round(m / 60)} h` : `hace ${Math.round(m / 1440)} día${Math.round(m / 1440) === 1 ? "" : "s"}`;
+}
+async function frescura() {
+  let u = null;
+  try { const r = await fetch(SUPABASE_URL + "/rest/v1/rpc/ultima_actualizacion", { method: "POST", headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" }, body: "{}" }); if (r.ok) u = await r.json(); } catch (e) {}
+  if (!u || !u.cargado) return;
+  const ult = [u.ofertas && `plazas ofertadas del ${fmtF(u.ofertas)}`, u.continua && `adjudicación continua del ${fmtF(u.continua)}`].filter(Boolean).join(" · ");
+  const txt = `🔄 Comprobamos los listados oficiales cada 15 minutos. Última carga: <strong>${haceTxt(u.cargado)}</strong>${ult ? ` (${ult})` : ""}. <a href="https://ceice.gva.es/es/web/rrhh-educacion" target="_blank" rel="noopener">Listados oficiales ↗</a>`;
+  ["fresh-home", "fresh-cons"].forEach(id => { const el = $(id); if (el) el.innerHTML = txt; });
+}
+frescura(); setInterval(frescura, 5 * 60000);
+
+/* ---------- Simulador de petición ---------- */
+let SPX = null;
+function spxPintar(pan, por) {
+  const panel = $("spx-panel"); SPX = { pan: pan.filter(r => r.estado !== 1 && r.estado !== 5), por };
+  if (!SPX.pan.some(r => (por[r.lista_id] || []).some(o => o.mi_posicion != null))) { panel.hidden = true; return; }
+  panel.hidden = false;
+  $("spx-f").innerHTML = ["Alicante", "Castelló", "València"].map(p => `<label class="chk" style="margin:0"><input type="checkbox" data-spx-p="${p}" checked><span>${p}</span></label>`).join("")
+    + (DOM ? `<label>Hasta <select id="spx-km"><option value="0">cualquier distancia</option><option>20</option><option>30</option><option>50</option><option>75</option><option>100</option><option>150</option></select> km de casa</label>` : `<span class="note">Guarda tu domicilio en Ajustes para simular también por distancia.</span>`);
+  $("spx-f").querySelectorAll("input,select").forEach(x => x.onchange = spxCalc);
+  spxCalc();
+}
+function spxCalc() {
+  if (!SPX) return;
+  const provs = [...document.querySelectorAll("[data-spx-p]")].filter(x => x.checked).map(x => x.dataset.spxP), km = +(($("spx-km") || {}).value || 0);
+  const pasa = (o, ps, k) => (!ps || ps.includes(o.provincia)) && (!k || ((distInfo(o.centro_codigo) || { km: 1e9 }).km <= k));
+  const fila = (lab, rows, N, ps, k) => { const t = new Set(rows.filter(o => pasa(o, ps, k)).map(o => o.fecha)).size; return `<tr><td>${lab}</td><td class="n"><strong>${t}</strong> de ${N}</td><td class="n"><strong>${Math.round(100 * t / (N || 1))} %</strong></td></tr>`; };
+  $("spx-body").innerHTML = SPX.pan.map(r => {
+    const rows = (SPX.por[r.lista_id] || []).filter(o => o.mi_posicion != null && o.mi_posicion < o.posicion_adj);
+    const N = Math.min(12, r.tandas || new Set((SPX.por[r.lista_id] || []).map(o => o.fecha)).size || 1);
+    const todas = (SPX.por[r.lista_id] || []).some(o => o.mi_posicion != null);
+    if (!todas) return "";
+    return `<h3 style="margin:.8rem 0 .3rem;font:600 1rem var(--body)">${esc(tituloLista(r))}</h3>
+      <div class="scroll"><table id="spx-tab"><thead><tr><th>Si hubieras pedido…</th><th class="n">Tandas con plaza para ti</th><th class="n">Por tanda</th></tr></thead><tbody>
+      ${fila("<strong>Tu selección</strong>" + (km ? ` (hasta ${km} km)` : ""), rows, N, provs, km)}
+      ${fila("Toda la Comunitat", rows, N, null, 0)}
+      ${["Alicante", "Castelló", "València"].map(p => fila("Solo " + p, rows, N, [p], 0)).join("")}
+      </tbody></table></div>`;
+  }).join("") || '<p class="note">Todavía no hay tandas con datos suficientes para simular.</p>';
+}
+
 async function oportunidades(pan, espMia) {
   await cargarOfertas();
   const { data, error } = await sb.rpc("mi_oportunidades");
@@ -1770,6 +1882,7 @@ async function oportunidades(pan, espMia) {
   });
   $("oport-body").innerHTML = html;
   wowPintar(pan, espMia, por);
+  try { spxPintar(pan, por); } catch (e) {}
   $("oport-body").querySelectorAll("select").forEach(sel => sel.onchange = () => {
     const out = $("op-res-" + sel.dataset.lista), rows = (por[sel.dataset.lista] || []).filter(o => o.centro_codigo === sel.value);
     const esMae = (pan.find(x => String(x.lista_id) === sel.dataset.lista) || {}).cuerpo === "maestros";
