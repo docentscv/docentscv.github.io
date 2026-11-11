@@ -919,7 +919,7 @@ async function guardarDom(calle, cp, loc) {
   if (!p) return { ok: false, msg: "No hemos encontrado esa dirección. Prueba solo con el código postal y la localidad." };
   const { data, error } = await sb.rpc("guardar_domicilio", { p_lat: p.lat, p_lon: p.lon, p_cp: cp, p_localidad: loc });
   if (error || data !== "ok") return { ok: false, msg: data === "fuera_de_zona" ? "Esa ubicación está fuera de la Comunitat Valenciana." : "No se pudo guardar el domicilio." };
-  DOM = { lat: p.lat, lon: p.lon, cp, localidad: loc };
+  DOM = { lat: p.lat, lon: p.lon, cp, localidad: loc, aviso_km: DOM ? DOM.aviso_km : null };
   return { ok: true, exacta: p.exacta, msg: p.exacta ? "Domicilio guardado." : "Hemos localizado tu código postal (no la calle exacta): las distancias serán algo más aproximadas." };
 }
 const ultimaInst = g => INST.filter(i => i.tipo === "continua" && i.grupo === g).sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
@@ -1296,12 +1296,29 @@ async function restaurarCompra(silencioso) {
 function domInit() {
   const pint = () => { $("dom-txt").textContent = DOM ? `Tienes guardada tu ubicación (${DOM.cp || ""} ${DOM.localidad || ""}). Si te mudas, escribe la nueva dirección y pulsa Guardar.` : "Todavía no has indicado tu domicilio: sin él no podemos calcular distancias."; $("dom-del").hidden = !DOM; };
   pint();
+  const KM_ERR = { sin_domicilio: "Guarda primero tu domicilio.", sin_acceso: "Necesitas tener el acceso activo.", valor: "Valor no válido.", no_autenticado: "Vuelve a iniciar sesión." };
+  const kmPint = async () => {
+    const sel = $("km-sel"); sel.disabled = !DOM; sel.value = String((DOM && DOM.aviso_km) || 0); if (sel.value === "") sel.value = "0";
+    const base = !DOM ? "Guarda primero tu domicilio para poder activarlo." : (DOM.aviso_km ? `Activado: te avisamos de las plazas a menos de ${DOM.aviso_km} km.` : "Ahora mismo no te avisamos por distancia.");
+    $("km-msg").textContent = base;
+    if (!DOM || !DOM.aviso_km) return;
+    let push = true;   // si no se puede comprobar en 1,5 s, no se muestra la advertencia
+    try { push = await Promise.race([navigator.serviceWorker.ready.then(r => r.pushManager.getSubscription()).then(x => !!x), new Promise(r => setTimeout(() => r(true), 1500))]); } catch (e) {}
+    if (!push && DOM && DOM.aviso_km) $("km-msg").textContent = base + " Ojo: en este dispositivo no tienes activadas las notificaciones; actívalas en este mismo apartado para recibir el aviso.";
+  };
+  kmPint();
+  $("km-sel").onchange = async () => {
+    const km = +$("km-sel").value;
+    const { data, error } = await sb.rpc("guardar_aviso_km", { p_km: km });
+    if (error || data !== "ok") { $("km-msg").textContent = error ? "No se pudo guardar (¿has ejecutado alertas_distancia.sql en Supabase?)." : (KM_ERR[data] || "No se pudo guardar."); $("km-sel").value = String((DOM && DOM.aviso_km) || 0); return; }
+    DOM.aviso_km = km || null; kmPint();
+  };
   $("dom-ok").onclick = async () => {
     $("dom-msg").textContent = "Buscando tu dirección…";
     const r = await guardarDom($("dom-calle").value, $("dom-cp").value, $("dom-loc").value);
-    $("dom-msg").textContent = r.msg; if (r.ok) { $("dom-calle").value = ""; pint(); situacion(); distCard(ACC); }
+    $("dom-msg").textContent = r.msg; if (r.ok) { $("dom-calle").value = ""; pint(); kmPint(); situacion(); distCard(ACC); }
   };
-  $("dom-del").onclick = async () => { await sb.rpc("borrar_domicilio"); DOM = null; $("dom-msg").textContent = "Domicilio borrado."; pint(); situacion(); };
+  $("dom-del").onclick = async () => { await sb.rpc("borrar_domicilio"); DOM = null; $("dom-msg").textContent = "Domicilio borrado."; pint(); kmPint(); situacion(); };
 }
 const REF_ERR = { no_existe: "Ese código no existe. Revísalo.", propio: "No puedes usar tu propio código.", ya_usado: "Ya has usado un código de invitación.", circular: "Esa persona se registró con tu código, así que no puede contar.", caducado: "El código solo se puede usar durante los primeros 30 días de tu cuenta." };
 const REFWEB = "https://docentscv.github.io/";
@@ -1409,7 +1426,11 @@ async function renderApartado() {
         <label>C. postal <input id="dom-cp" type="text" inputmode="numeric" maxlength="5" autocomplete="postal-code" style="width:6.5rem"></label>
         <label>Localidad <input id="dom-loc" type="text" autocomplete="address-level2"></label>
         <button class="btn" id="dom-ok">Guardar</button><button class="link" id="dom-del" hidden>Borrar mi domicilio</button></div>
-      <p class="note" id="dom-msg" role="status" style="margin:.4rem 0 0"></p></div>
+      <p class="note" id="dom-msg" role="status" style="margin:.4rem 0 0"></p>
+      <div id="km-box" style="margin:.8rem 0 0;padding-top:.7rem;border-top:1px solid var(--line)"><b>🔔 Avísame de plazas cerca de casa</b>
+        <p class="note" style="margin:.3rem 0 .5rem">Te mandamos una notificación cuando salga una plaza de tus bolsas (ofertada o de difícil cobertura) a menos de los kilómetros que elijas. Distancia aproximada por carretera.</p>
+        <div class="filters"><label>Distancia <select id="km-sel"><option value="0">No avisarme</option><option value="10">10 km</option><option value="20">20 km</option><option value="30">30 km</option><option value="50">50 km</option><option value="75">75 km</option><option value="100">100 km</option><option value="150">150 km</option></select></label></div>
+        <p class="note" id="km-msg" role="status" style="margin:.4rem 0 0"></p></div></div>
     <div class="panel" id="ref-box" style="margin:.8rem 0 0"><b>🎁 Invita y consigue la app gratis</b>
       <p class="note" style="margin:.3rem 0 .5rem">Si <strong>3 personas</strong> se registran con tu código <strong>y pagan</strong> la app, tu curso es gratis.</p>
       <div id="ref-body" class="note">Cargando…</div><p class="note" id="ref-msg" role="status" style="margin:.4rem 0 0"></p></div>`
