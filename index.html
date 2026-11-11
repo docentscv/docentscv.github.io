@@ -1437,10 +1437,14 @@ async function renderApartado() {
     return;
   }
   if (!window.__espAsked) { window.__espAsked = true; let ya = null; try { ya = (await sb.from("perfiles").select("esp_maestros").eq("id", USER.id).maybeSingle()).data; } catch (e) {} if (!ya || !ya.esp_maestros || !ya.esp_maestros.length) return pedirEsp(); }
-  let espMia = [];
-  try { espMia = ((await sb.from("perfiles").select("esp_maestros").eq("id", USER.id).maybeSingle()).data || {}).esp_maestros || []; } catch (e) {}
+  let espMia = [], profMan = [];
+  try { const d0 = (await sb.from("perfiles").select("esp_maestros").eq("id", USER.id).maybeSingle()).data || {}; espMia = d0.esp_maestros || []; } catch (e) {}
+  try { const d1 = await sb.from("perfiles").select("esp_profesor").eq("id", USER.id).maybeSingle(); if (!d1.error) profMan = (d1.data || {}).esp_profesor || []; } catch (e) {}
   const espTxt = espMia.map(c => { const e = ESPU.find(x => x.codigo === c); return `<span class="tag" style="margin:.15rem .25rem 0 0">${esc(c)} · ${esc(e ? e.nombre : "")}</span>`; }).join("");
   let bolTxt = "", profMia = []; try { const bl = ((await sb.rpc("mi_panorama")).data || []).filter(r => r.cuerpo !== "maestros"); profMia = [...new Set(bl.map(r => r.bolsa))]; bolTxt = [...new Map(bl.map(r => [r.bolsa, r])).values()].map(r => `<span class="tag" style="margin:.15rem .25rem 0 0">${esc(r.bolsa)} · ${esc(r.bolsa_nombre)}</span>`).join(""); } catch (e) {}
+  const profExtra = profMan.filter(c => !profMia.includes(c));
+  bolTxt += profExtra.map(c => { const e = ESPU.find(x => x.codigo === c); return `<span class="tag" style="margin:.15rem .25rem 0 0" title="Añadida por administración: cuenta para los avisos; tu puesto saldrá cuando aparezcas en una lista">${esc(c)} · ${esc(e ? e.nombre : "")} ✍️</span>`; }).join("");
+  profMia = [...new Set([...profMia, ...profMan])];
   const pn = (idn.split(",")[1] || idn).trim().toLowerCase().replace(/(^|\s)\S/g, c => c.toUpperCase());
   $("perfil").innerHTML = `<div class="h">Hola, ${esc(pn)} 👋</div><div class="nm">${esc(idn)}</div>${espTxt || bolTxt ? `<div class="espfila"><div>${espTxt}${bolTxt}</div><button class="link" id="esp-pedir" type="button">✏️ Pedir cambio de especialidad</button></div>` : ""}`;
   if ($("esp-pedir")) $("esp-pedir").onclick = () => espPedir(espMia, profMia);
@@ -1572,10 +1576,10 @@ async function adminUsuarios() {
 function usuPintar() {
   const q = $("us-q").value.trim().toLowerCase(), es = $("us-est").value, f = d => d ? new Date(d).toLocaleDateString("es-ES") : "—";
   const fil = USU.filter(u => (!es || (es === "regalo" ? u.origen === "regalo" && u.estado === "pagado" : es === "sin_confirmar" ? u.confirmado === false : u.estado === es)) && (!q || ((u.email || "") + " " + (u.nombre || "")).toLowerCase().includes(q)));
-  $("us-rows").innerHTML = fil.length ? fil.slice(0, 500).map(u => `<tr><td>${esc(u.email)}</td><td>${esc(u.nombre || "—")}</td><td>${f(u.alta)}</td><td>${esc(u.origen === "regalo" && u.estado === "pagado" ? EST_US.regalo : EST_US[u.estado] || u.estado)}${u.confirmado === false ? `<br><span class="tag" style="background:var(--amb-bg);color:var(--amb)">✉️ Sin confirmar el correo</span> <button class="link" data-cf="${esc(u.email)}">Confirmar</button>` : ""}${u.esp_maestros ? `<br><button class="link" data-ue="${esc(u.email)}" data-uesp="${esc((u.esp_maestros || []).join(","))}" title="Cambiar sus especialidades de Maestros">✏️ Maestros: ${esc((u.esp_maestros || []).join(", ") || "ninguna")}</button>` : ""}</td><td>${u.estado === "pagado" || u.estado === "pago_caducado" ? f(u.pagado_el) : "—"}</td><td>${u.pagado_hasta ? fmtF(u.pagado_hasta) : "—"}</td><td>${u.origen === "regalo" && u.estado === "pagado" ? `<button class="link" data-rg="0" data-m="${esc(u.email)}">Quitar regalo</button>` : u.estado === "pagado" ? "" : `<button class="link" data-rg="1" data-m="${esc(u.email)}">🎁 Dar acceso gratis</button>`}</td></tr>`).join("") : '<tr><td colspan="7">Sin resultados.</td></tr>';
+  $("us-rows").innerHTML = fil.length ? fil.slice(0, 500).map(u => `<tr><td>${esc(u.email)}</td><td>${esc(u.nombre || "—")}</td><td>${f(u.alta)}</td><td>${esc(u.origen === "regalo" && u.estado === "pagado" ? EST_US.regalo : EST_US[u.estado] || u.estado)}${u.confirmado === false ? `<br><span class="tag" style="background:var(--amb-bg);color:var(--amb)">✉️ Sin confirmar el correo</span> <button class="link" data-cf="${esc(u.email)}">Confirmar</button>` : ""}${u.esp_maestros ? `<br><button class="link" data-ue="${esc(u.email)}" data-uesp="${esc((u.esp_maestros || []).join(","))}" data-uprof="${esc((u.esp_profesor || []).join(","))}" data-ulis="${esc((u.bolsas_listas || []).join(","))}" title="Cambiar sus especialidades">✏️ Especialidades: ${esc([(u.esp_maestros || []).length ? "Maestros " + u.esp_maestros.join(", ") : "", [...new Set([...(u.bolsas_listas || []), ...(u.esp_profesor || [])])].length ? "Profesorado " + [...new Set([...(u.bolsas_listas || []), ...(u.esp_profesor || [])])].join(", ") : ""].filter(Boolean).join(" · ") || "ninguna")}</button>` : ""}</td><td>${u.estado === "pagado" || u.estado === "pago_caducado" ? f(u.pagado_el) : "—"}</td><td>${u.pagado_hasta ? fmtF(u.pagado_hasta) : "—"}</td><td>${u.origen === "regalo" && u.estado === "pagado" ? `<button class="link" data-rg="0" data-m="${esc(u.email)}">Quitar regalo</button>` : u.estado === "pagado" ? "" : `<button class="link" data-rg="1" data-m="${esc(u.email)}">🎁 Dar acceso gratis</button>`}</td></tr>`).join("") : '<tr><td colspan="7">Sin resultados.</td></tr>';
   $("us-rows").querySelectorAll("button[data-rg]").forEach(b => b.onclick = () => regalo(b.dataset.m, b.dataset.rg === "1"));
   $("us-rows").querySelectorAll("button[data-cf]").forEach(b => b.onclick = () => confirmarEmail(b.dataset.cf));
-  $("us-rows").querySelectorAll("button[data-ue]").forEach(b => b.onclick = () => espPedir(b.dataset.uesp.split(",").filter(Boolean), [], b.dataset.ue));
+  $("us-rows").querySelectorAll("button[data-ue]").forEach(b => b.onclick = () => espPedir(b.dataset.uesp.split(",").filter(Boolean), (b.dataset.uprof || "").split(",").filter(Boolean), b.dataset.ue, (b.dataset.ulis || "").split(",").filter(Boolean)));
 }
 async function confirmarEmail(mail) {
   if (!confirm("¿Confirmar a mano el correo de " + mail + "? Podrá entrar con la contraseña que eligió, sin el email de confirmación.")) return;
@@ -1638,7 +1642,7 @@ async function adminMensajes() {
   const L = r.data || [], pend = L.filter(m => !m.resuelto).length, TN = { sugerencia: "💡 Sugerencia", reclamacion: "📣 Reclamación", error: "🐞 Error", otro: "Mensaje", especialidad: "✏️ Cambio de especialidad" };
   $("adm-msg-sum").textContent = "Sugerencias y reclamaciones" + (pend ? " (" + pend + " sin resolver)" : ""); adminBadge(pend);
   $("msg-res").textContent = L.length ? (pend ? pend + " sin resolver." : "No hay mensajes pendientes. 🎉") + (L.length - pend ? " Las resueltas están en el desplegable de abajo." : "") : "Todavía no hay mensajes.";
-  const fila = m => `<div class="it" style="${m.resuelto ? "opacity:.55" : ""}"><div class="a"><b>${TN[m.tipo] || "Mensaje"} · ${esc(new Date(m.creado).toLocaleString("es-ES", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }))}</b><small style="white-space:pre-wrap;color:var(--ink,inherit)">${esc(m.texto.replace(/\n?\[(ESP|PROF):[0-9A-Z,]+\]/g, ""))}</small><small>${m.email ? `<a href="mailto:${esc(m.email)}?subject=${encodeURIComponent("Sobre tu mensaje en DocentsCV")}">${esc(m.email)}</a>` : "Sin correo"}</small></div><div class="z">${m.tipo === "especialidad" && !m.resuelto && /\[ESP:([0-9,]*)\]/.test(m.texto) && m.email ? (e => `<button type="button" class="btn" data-ap="${m.id}" data-em="${esc(m.email)}" data-esp="${esc(e)}">${e ? "✅ Aplicar cambio (Maestros)" : "✅ Quitar sus especialidades de Maestros"}</button> `)(m.texto.match(/\[ESP:([0-9,]*)\]/)[1]) : ""}${m.tipo === "especialidad" && !m.resuelto && /\[PROF:/.test(m.texto) ? `<small class="note" style="display:block;margin:.3rem 0">Profesorado: no se cambia aquí; las bolsas salen de las listas oficiales.</small>` : ""}<button type="button" class="dbtn" data-mid="${m.id}" data-r="${m.resuelto ? 0 : 1}">${m.resuelto ? "Reabrir" : "✔ Resuelto"}</button></div></div>`;
+  const fila = m => `<div class="it" style="${m.resuelto ? "opacity:.55" : ""}"><div class="a"><b>${TN[m.tipo] || "Mensaje"} · ${esc(new Date(m.creado).toLocaleString("es-ES", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }))}</b><small style="white-space:pre-wrap;color:var(--ink,inherit)">${esc(m.texto.replace(/\n?\[(ESP|PROF):[0-9A-Z,]+\]/g, ""))}</small><small>${m.email ? `<a href="mailto:${esc(m.email)}?subject=${encodeURIComponent("Sobre tu mensaje en DocentsCV")}">${esc(m.email)}</a>` : "Sin correo"}</small></div><div class="z">${m.tipo === "especialidad" && !m.resuelto && /\[ESP:([0-9,]*)\]/.test(m.texto) && m.email ? (e => `<button type="button" class="btn" data-ap="${m.id}" data-em="${esc(m.email)}" data-esp="${esc(e)}">${e ? "✅ Aplicar cambio (Maestros)" : "✅ Quitar sus especialidades de Maestros"}</button> `)(m.texto.match(/\[ESP:([0-9,]*)\]/)[1]) : ""}${m.tipo === "especialidad" && !m.resuelto && /\[PROF:([0-9A-Z,]*)\]/.test(m.texto) && m.email ? `<button type="button" class="btn" data-apr="${m.id}" data-em="${esc(m.email)}" data-esp="${esc(m.texto.match(/\[PROF:([0-9A-Z,]*)\]/)[1])}">✅ Aplicar cambio (Profesorado)</button> ` : ""}<button type="button" class="dbtn" data-mid="${m.id}" data-r="${m.resuelto ? 0 : 1}">${m.resuelto ? "Reabrir" : "✔ Resuelto"}</button></div></div>`;
   const hecho = L.filter(m => m.resuelto), abierto = !!(document.querySelector("#msg-lista details[open]"));
   $("msg-lista").innerHTML = L.filter(m => !m.resuelto).map(fila).join("") + (hecho.length ? `<details style="margin-top:.8rem"${abierto ? " open" : ""}><summary class="note" style="cursor:pointer">Resueltas (${hecho.length})</summary>${hecho.map(fila).join("")}</details>` : "");
 }
@@ -1650,8 +1654,19 @@ document.addEventListener("click", async ev => {
   b.disabled = true;
   const { data, error } = await sb.rpc("admin_set_esp_maestros", { p_email: em, p_esp: esp });
   if (error || data !== "ok") { $("msg-res").innerHTML = `<span class="err">${esc(error ? error.message : data === "no_existe" ? "No hay ninguna cuenta con ese correo." : data)}</span>`; b.disabled = false; return; }
-  await sb.rpc("admin_mensaje_resuelto", { p_id: +b.dataset.ap, p_resuelto: true });
-  await adminMensajes(); $("msg-res").textContent = "✅ Especialidades cambiadas para " + em + ".";
+  const otro = (b.closest(".it") || document).querySelector("[data-apr]:not([disabled])");
+  if (!otro) { await sb.rpc("admin_mensaje_resuelto", { p_id: +b.dataset.ap, p_resuelto: true }); await adminMensajes(); } else b.remove();
+  $("msg-res").textContent = "✅ Especialidades de Maestros cambiadas para " + em + "." + (otro ? " Falta aplicar la parte de Profesorado." : "");
+});
+document.addEventListener("click", async ev => {
+  const b = ev.target.closest("[data-apr]"); if (!b) return;
+  const em = b.dataset.em, esp = b.dataset.esp.split(",").filter(Boolean);
+  if (!confirm("¿Añadir a mano estas especialidades de profesorado a " + em + ": " + (esp.join(", ") || "ninguna") + "?\n(Cuentan para sus avisos; su puesto sale solo de las listas oficiales.)")) return;
+  b.disabled = true;
+  const { data, error } = await sb.rpc("admin_set_esp_profesor", { p_email: em, p_esp: esp });
+  if (error || data !== "ok") { $("msg-res").innerHTML = `<span class="err">${esc(error ? error.message : data === "no_existe" ? "No hay ninguna cuenta con ese correo." : data)}</span>`; b.disabled = false; return; }
+  const otro = (b.closest(".it") || document).querySelector("[data-ap]:not([disabled])");
+  if (!otro) { await sb.rpc("admin_mensaje_resuelto", { p_id: +b.dataset.apr, p_resuelto: true }); await adminMensajes(); } else b.remove(); $("msg-res").textContent = "✅ Especialidades de profesorado guardadas para " + em + ".";
 });
 async function adminCaducadas() {
   const a = await sb.rpc("admin_pruebas_caducadas"), r = await sb.rpc("admin_referidos");
@@ -1980,9 +1995,9 @@ async function pedirEsp(forzar) {
 }
 
 const EP_FAM = [["secundaria", "Secundaria"], ["fp_especialistas", "FP · profesorado especialista"], ["idiomas", "Escuelas Oficiales de Idiomas"], ["catedraticos_musica", "Catedráticos de Música"], ["musica", "Música y Artes Escénicas"], ["artes_plasticas", "Artes Plásticas y Diseño"], ["taller_artes", "Maestros de Taller"]];
-function espPedir(actual, prof = [], adm = null) {
-  actual = actual || []; prof = prof || [];
-  const chk = (e, on) => `<label style="display:flex;flex-direction:row;align-items:center;gap:.4rem;margin:.15rem 0;font-size:.92rem"><input type="checkbox" value="${esc(e.codigo)}" ${on ? "checked" : ""} style="min-width:0;width:1.05rem;height:1.05rem;flex:none;margin:0"> ${esc(e.codigo)} · ${esc(e.nombre)}</label>`;
+function espPedir(actual, prof = [], adm = null, profListas = []) {
+  actual = actual || []; prof = prof || []; profListas = adm ? (profListas || []) : [];
+  const chk = (e, on) => { const fija = profListas.includes(e.codigo); return `<label style="display:flex;flex-direction:row;align-items:center;gap:.4rem;margin:.15rem 0;font-size:.92rem"${fija ? ' title="Sale en las listas oficiales: no se puede quitar"' : ""}><input type="checkbox" value="${esc(e.codigo)}" ${on || fija ? "checked" : ""} ${fija ? "disabled data-fija" : ""} style="min-width:0;width:1.05rem;height:1.05rem;flex:none;margin:0"> ${esc(e.codigo)} · ${esc(e.nombre)}${fija ? ' <span class="note">(listas)</span>' : ""}</label>`; };
   const mae = ESPU.filter(e => e.cuerpo === "maestros");
   const profEsp = EP_FAM.map(([f, nom]) => { const L = ESPU.filter(e => e.cuerpo === f); return L.length ? `<div data-epfam style="margin:.5rem 0 0"><b style="font-size:.85rem;color:var(--muted)">${nom}</b><div class="ep-cols">${L.map(e => chk(e, prof.includes(e.codigo))).join("")}</div></div>` : ""; }).join("");
   const busc = id => `<input id="${id}" type="search" placeholder="Buscar especialidad (nombre o código)" autocomplete="off" style="width:100%;margin:.2rem 0 .3rem">`;
@@ -2000,17 +2015,20 @@ function espPedir(actual, prof = [], adm = null) {
   filtro("ep-qm", "ep-ml"); filtro("ep-q", "ep-pl");
   const cuenta = () => ["ep-m", "ep-p"].forEach(id => { const n = $(id).querySelectorAll("input:checked").length; $(id).querySelector("[data-cnt]").textContent = n ? `· ${n} marcada${n === 1 ? "" : "s"}` : ""; });
   $("ep-list").onchange = cuenta; cuenta();
-  $("esp-dlg").querySelector("h2").textContent = adm ? "✏️ Especialidades de Maestros de " + adm : "✏️ Pedir cambio de especialidad";
-  $("ep-p").hidden = !!adm; $("ep-nota").closest("label").hidden = !!adm; $("ep-send").textContent = adm ? "Guardar" : "Enviar petición";
-  if (adm) $("ep-m").open = true;
+  $("esp-dlg").querySelector("h2").textContent = adm ? "✏️ Especialidades de " + adm : "✏️ Pedir cambio de especialidad";
+  $("ep-nota").closest("label").hidden = !!adm; $("ep-form").querySelector("p.note").innerHTML = adm ? "Cambia sus especialidades y pulsa <strong>Guardar</strong>: se aplica al momento." : "Marca <strong>todas</strong> las especialidades que tengas, en Maestros y/o en Profesorado. Se lo enviamos a administración y te las cambiamos."; $("ep-send").textContent = adm ? "Guardar" : "Enviar petición";
+  const ayudaP = $("ep-p").querySelector("p.note"); ayudaP.textContent = adm ? "Las marcadas como «(listas)» salen de las listas oficiales y no se pueden quitar. Las que añadas cuentan para sus avisos (plazas ofertadas, cerca de casa, resumen); su puesto saldrá cuando aparezca en una lista." : "Tus bolsas de profesorado salen de las listas oficiales. Si falta o sobra alguna, márcalo bien aquí y lo revisamos.";
   $("ep-st").textContent = ""; $("ep-nota").value = ""; $("ep-send").disabled = false; $("ep-ok").hidden = true; $("ep-form").hidden = false;
   $("ep-send").onclick = adm ? async () => {
     const sel = [...$("ep-m").querySelectorAll("input:checked")].map(i => i.value).sort(), st = $("ep-st");
+    const selP = [...$("ep-p").querySelectorAll("input:checked:not([data-fija])")].map(i => i.value).sort();
     $("ep-send").disabled = true; st.textContent = "Guardando…";
-    const { data, error } = await sb.rpc("admin_set_esp_maestros", { p_email: adm, p_esp: sel });
+    const r1 = await sb.rpc("admin_set_esp_maestros", { p_email: adm, p_esp: sel });
+    const r2 = await sb.rpc("admin_set_esp_profesor", { p_email: adm, p_esp: selP });
     $("ep-send").disabled = false;
-    if (error || data !== "ok") { st.textContent = error ? "No se pudo (¿has ejecutado especialidades_admin.sql?): " + error.message : data === "no_existe" ? "No hay ninguna cuenta con ese correo." : data; return; }
-    $("esp-dlg").close(); adminUsuarios(); alert("✅ Especialidades de Maestros guardadas para " + adm + (sel.length ? ": " + sel.join(", ") : " (ninguna)."));
+    const mal = [r1, r2].find(r => r.error || r.data !== "ok");
+    if (mal) { st.textContent = mal.error ? "No se pudo (¿has ejecutado especialidades_profesorado.sql?): " + mal.error.message : mal.data === "no_existe" ? "No hay ninguna cuenta con ese correo." : mal.data; return; }
+    $("esp-dlg").close(); adminUsuarios(); alert("✅ Guardado para " + adm + "\nMaestros: " + (sel.join(", ") || "ninguna") + "\nProfesorado añadido a mano: " + (selP.join(", ") || "ninguna"));
   } : async () => {
     const selM = [...$("ep-m").querySelectorAll("input:checked")].map(i => i.value).sort(), selP = [...$("ep-p").querySelectorAll("input:checked")].map(i => i.value).sort();
     const actM = [...actual].sort(), actP = [...prof].sort(), st = $("ep-st");
