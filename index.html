@@ -437,6 +437,14 @@ details.panel[open]>summary{margin-bottom:.8rem}
   <main id="v-admin" class="view" hidden>
     <div class="top"><div class="brand">Docents<b>CV</b></div><div><button class="link" data-go="apartado">← Mi apartado</button></div></div>
     <h1>Administración</h1>
+    <details class="panel" id="adm-sis">
+      <summary id="sis-sum">Estado del sistema</summary>
+      <div id="sis-res" class="note">Cargando…</div>
+      <h3 style="margin:.9rem 0 .3rem;font:600 1rem var(--body)">Errores de la web (últimos 7 días)</h3>
+      <p class="note" style="margin:0 0 .4rem">Fallos que han tenido los usuarios en su navegador, agrupados. Anónimos: no sabemos de quién son, solo la pantalla y el tipo de dispositivo.</p>
+      <div id="sis-err" class="note">Cargando…</div>
+      <p style="margin:.5rem 0 0"><button class="btn ghost" type="button" id="sis-borrar" style="color:var(--accent);border-color:var(--accent)">Vaciar la lista de errores</button></p>
+    </details>
     <details class="panel" id="adm-usu">
       <summary>Usuarios y pagos</summary>
       <div id="us-res" class="note">Cargando…</div>
@@ -559,6 +567,26 @@ details.panel[open]>summary{margin-bottom:.8rem}
     </dialog>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
+/* Registro anónimo de errores de la web: qué falló, en qué pantalla y en qué tipo de dispositivo. Sin usuario, sin IP. Máximo 5 por visita. */
+(function () {
+  const VERSION = "2026-11-12", URL = "https://gwoamxgvnhietzhixjlf.supabase.co/rest/v1/rpc/registrar_error", KEY = "sb_publishable_H2de5fVQpyV-L9y_5K6DpA_ZQ_zQCUl";
+  let n = 0; const vistos = new Set();
+  const disp = () => { const u = navigator.userAgent || ""; const so = /iPhone|iPad|iPod/i.test(u) || (/Macintosh/i.test(u) && navigator.maxTouchPoints > 1) ? "ios" : /Android/i.test(u) ? "android" : "pc";
+    const nav = /EdgA?\//.test(u) ? "edge" : /SamsungBrowser/.test(u) ? "samsung" : /Firefox|FxiOS/.test(u) ? "firefox" : /CriOS|Chrome/.test(u) ? "chrome" : /Safari/.test(u) ? "safari" : "otro";
+    let app = ""; try { if (matchMedia("(display-mode: standalone)").matches) app = " · app"; } catch (e) {} return so + " · " + nav + app; };
+  const enviar = (msg, fuente, linea) => {
+    msg = String(msg || "").slice(0, 300);
+    if (!msg || n >= 5 || /^Script error\.?$/i.test(msg) || /ResizeObserver loop/i.test(msg) || /extension:\/\//.test(fuente || "")) return;
+    const k = msg + "|" + fuente + "|" + linea; if (vistos.has(k)) return; vistos.add(k); n++;
+    let pag = ""; try { pag = (document.querySelector("main.view:not([hidden])") || {}).id || location.hash || "/"; } catch (e) {}
+    try { fetch(URL, { method: "POST", keepalive: true, headers: { apikey: KEY, Authorization: "Bearer " + KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_msg: msg, p_fuente: String(fuente || "").replace(/[?#].*$/, ""), p_linea: +linea || 0, p_pagina: pag, p_disp: disp(), p_version: VERSION }) }).catch(() => {}); } catch (e) {}
+  };
+  window.addEventListener("error", e => { if (e && e.message) enviar(e.message, e.filename, e.lineno); });
+  window.addEventListener("unhandledrejection", e => { const r = e && e.reason; enviar("Promesa: " + (r && (r.message || r.toString()) || "sin detalle"), "", 0); });
+})();
+</script>
+<script>
 // ====== CONEXIÓN SUPABASE ======
 /* Días de prueba que se anuncian en la web: debe coincidir con config.dias_prueba de Supabase (update config set valor='15' where clave='dias_prueba') */
 const DIAS_PRUEBA = 15, DIAS_AVISO = DIAS_PRUEBA + 7;      // el aviso de descuento sale 7 días después de acabar la prueba (mismo cálculo en lanzamiento.sql)
@@ -614,7 +642,7 @@ function show(v) {
   tb.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
   if (v === "consulta") { consultaInit(); if (!$("rows").children.length) load(true); }
   if (v === "apartado") renderApartado();
-  if (v === "admin") { if (!ADMIN) return show("home"); adminLista(); adminUsuarios(); adminCaducadas(); adminMensajes(); adminEmbudo(); }
+  if (v === "admin") { if (!ADMIN) return show("home"); adminSistema(); adminLista(); adminUsuarios(); adminCaducadas(); adminMensajes(); adminEmbudo(); }
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (b) { try { navigator.vibrate && navigator.vibrate(8); } catch (_) {} show(b.dataset.go); } });
 
@@ -1413,26 +1441,69 @@ async function renderApartado() {
   try { idn = (await sb.rpc("mi_nombre")).data; } catch (e) {}
   if (!idn) {
     $("analisis").hidden = true; $("acc-box").innerHTML = ""; $("ajustes").hidden = true; $("perfil").innerHTML = "";
-    $("perfil").innerHTML = `<h2>Identifícate</h2><p style="margin:0 0 .75rem">Escribe tu nombre exactamente como sale en las listas oficiales: apellidos, una coma y el nombre. <strong>No se podrá cambiar después.</strong></p>
-      <div class="filters"><label>Tu nombre <input id="n-nom" type="text" autocomplete="off" placeholder="APELLIDO1 APELLIDO2, NOMBRE" style="min-width:min(22rem,80vw)"></label></div>
+    let pend = null; try { pend = (await sb.rpc("mi_nombre_pendiente")).data; } catch (e) {}
+    const datosExtra = () => `
       <p class="note" style="margin:.9rem 0 .3rem"><b>📍 Tu domicilio</b> (opcional): lo usamos solo para calcular la distancia y el tiempo hasta cada centro. Guardamos una ubicación aproximada, no la dirección. Puedes cambiarlo o borrarlo después en Ajustes.</p>
       <div class="filters"><label>Calle y número <input id="n-calle" type="text" autocomplete="street-address" style="min-width:min(16rem,70vw)"></label><label>C. postal <input id="n-cp" type="text" inputmode="numeric" maxlength="5" autocomplete="postal-code" style="width:6.5rem"></label><label>Localidad <input id="n-loc" type="text" autocomplete="address-level2"></label></div>
       <div class="filters"><label>¿Te invitó alguien? Su código (opcional) <input id="n-ref" type="text" placeholder="DCV-XXXXX" maxlength="12" style="text-transform:uppercase;width:9rem"></label></div>
-      <label class="chk"><input type="checkbox" id="n-av"><span>Quiero recibir por email un aviso cuando salgan plazas ofertadas en mis bolsas (opcional; puedes cambiarlo cuando quieras).</span></label><p style="margin:.8rem 0 .3rem"><button class="btn" id="n-ok">Confirmar</button></p><p class="note" id="n-msg" role="status"></p>`;
-    $("n-ok").onclick = async () => {
-      const nom = $("n-nom").value.trim(), msg = s => { $("n-msg").textContent = s; };
+      <label class="chk"><input type="checkbox" id="n-av"><span>Quiero recibir por email un aviso cuando salgan plazas ofertadas en mis bolsas (opcional; puedes cambiarlo cuando quieras).</span></label>`;
+    const aplicarExtras = async msg => {
+      if ($("n-av") && $("n-av").checked) { try { await sb.from("perfiles").upsert({ id: USER.id, avisos: true }); } catch (e) {} }
+      if ($("n-cp") && ($("n-cp").value.trim() || $("n-calle").value.trim())) { msg("Guardando tu domicilio…"); try { const r = await guardarDom($("n-calle").value, $("n-cp").value, $("n-loc").value); if (!r.ok) alert(r.msg + "\nPodrás indicarlo más tarde en Ajustes."); } catch (e) {} }
+      if ($("n-ref") && $("n-ref").value.trim()) { try { const { data: rr } = await sb.rpc("usar_codigo", { p_codigo: $("n-ref").value }); if (rr !== "ok") alert(REF_ERR[rr] || "No se pudo aplicar el código de invitación."); } catch (e) {} }
+    };
+    if (pend) {
+      $("perfil").innerHTML = `<h2>Todavía no apareces en ninguna lista</h2>
+        <p style="margin:0 0 .5rem">Dejaste guardado el nombre <strong>«${esc(pend)}»</strong>. En cuanto aparezcas en una lista oficial de la Comunitat Valenciana, te vincularemos la cuenta automáticamente y te avisaremos por email — no tienes que hacer nada más.</p>
+        <p class="note" style="margin:0 0 .75rem">Mientras tanto, de momento no podemos mostrarte tu puesto ni las bolsas, porque todavía no sabemos cuáles son. En cuanto te revisemos y veas que el nombre está mal escrito, puedes corregirlo aquí:</p>
+        <div class="filters"><label>Tu nombre <input id="n-nom" type="text" autocomplete="off" value="${esc(pend)}" placeholder="APELLIDO1 APELLIDO2, NOMBRE" style="min-width:min(22rem,80vw)"></label></div>
+        <p style="margin:.8rem 0 .3rem"><button class="btn" id="n-corr">Corregir nombre</button></p><p class="note" id="n-msg" role="status"></p>`;
+      $("n-corr").onclick = async () => {
+        const nom = $("n-nom").value.trim(), msg = s => { $("n-msg").textContent = s; };
+        if (nom.length < 6) return msg("Escribe tu nombre completo: apellidos, una coma y el nombre.");
+        msg("Guardando…");
+        const { data, error } = await sb.rpc("guardar_nombre_pendiente", { p_nombre: nom });
+        if (error) return msg("No se pudo guardar: " + error.message);
+        msg(data === "ok" ? "Guardado. Te avisaremos cuando aparezcas en una lista." : data === "corto" ? "Escribe tu nombre completo." : "No se pudo guardar.");
+      };
+      return;
+    }
+    $("perfil").innerHTML = `<h2>Identifícate</h2><p style="margin:0 0 .75rem">Escribe tu nombre exactamente como sale en las listas oficiales: apellidos, una coma y el nombre.</p>
+      <div class="filters"><label>Tu nombre <input id="n-nom" type="text" autocomplete="off" placeholder="APELLIDO1 APELLIDO2, NOMBRE" style="min-width:min(22rem,80vw)"></label></div>
+      <p style="margin:.8rem 0 .3rem"><button class="btn" id="n-buscar">Buscar</button></p><p class="note" id="n-msg" role="status"></p><div id="n-conf"></div>`;
+    $("n-buscar").onclick = async () => {
+      const nom = $("n-nom").value.trim(), msg = s => { $("n-msg").textContent = s; }; $("n-conf").innerHTML = "";
       if (nom.length < 6) return msg("Escribe tu nombre completo: apellidos, una coma y el nombre.");
-      if (!confirm("Vas a registrar «" + nom + "». No se podrá cambiar después. ¿Es correcto?")) return;
       msg("Buscando en las listas…");
-      const { data, error } = await sb.rpc("reclamar_nombre", { p_nombre: nom });
+      const { data: r, error } = await sb.rpc("comprobar_nombre", { p_nombre: nom });
       if (error) return msg("No se pudo comprobar: " + error.message);
-      if (data === "ok" || data === "ya_tiene") {
-        if ($("n-av").checked) { try { await sb.from("perfiles").upsert({ id: USER.id, avisos: true }); } catch (e) {} }
-        if ($("n-cp").value.trim() || $("n-calle").value.trim()) { msg("Guardando tu domicilio…"); try { const r = await guardarDom($("n-calle").value, $("n-cp").value, $("n-loc").value); if (!r.ok) alert(r.msg + "\nPodrás indicarlo más tarde en Ajustes."); } catch (e) {} }
-        if ($("n-ref").value.trim()) { try { const { data: rr } = await sb.rpc("usar_codigo", { p_codigo: $("n-ref").value }); if (rr !== "ok") alert(REF_ERR[rr] || "No se pudo aplicar el código de invitación."); } catch (e) {} }
-        return pedirEsp();
+      const estado = r && r.estado;
+      if (estado === "exacto" || estado === "orden") {
+        msg("");
+        $("n-conf").innerHTML = `<p class="note" style="margin:0 0 .5rem">Hemos encontrado: <strong>${esc(r.nombre)}</strong>${datosExtra()}</p><p style="margin:.6rem 0 .3rem"><button class="btn" id="n-ok">Sí, soy yo — confirmar</button> <button class="link" id="n-no" type="button">No soy yo</button></p>`;
+        $("n-no").onclick = () => { $("n-conf").innerHTML = ""; };
+        $("n-ok").onclick = async () => {
+          if (!confirm("Vas a registrar «" + r.nombre + "». No se podrá cambiar después. ¿Es correcto?")) return;
+          msg("Guardando…");
+          const { data: rr, error: e2 } = await sb.rpc("reclamar_nombre", { p_nombre: r.nombre });
+          if (e2) return msg("No se pudo registrar: " + e2.message);
+          if (rr === "ok" || rr === "ya_tiene") { await aplicarExtras(msg); return pedirEsp(); }
+          msg(rr === "ambiguo" ? "Hay más de una persona con ese nombre y todavía no podemos distinguirte. Escríbenos y lo resolvemos." : "No se pudo registrar. Vuelve a entrar con tu cuenta.");
+        };
+        return;
       }
-      msg(data === "ambiguo" ? "Hay más de una persona con ese nombre y todavía no podemos distinguirte. Escríbenos y lo resolvemos." : data === "no_encontrado" ? "No encontramos ese nombre en las listas. Escríbelo como aparece en el PDF: apellidos, coma y nombre." : "Vuelve a entrar con tu cuenta.");
+      if (estado === "ambiguo") return msg("Hay más de una persona con ese nombre y todavía no podemos distinguirte. Escríbenos (Sugerencias y reclamaciones) y lo resolvemos a mano.");
+      if (estado === "parecido") return msg("Ese nombre no coincide exactamente con ninguna de las listas. Revisa que esté escrito igual que en el PDF oficial (apellidos, coma, nombre, sin abreviar) y vuelve a intentarlo.");
+      // no_encontrado: puede que aún no hayas salido en ninguna lista
+      $("n-conf").innerHTML = `<p class="note" style="margin:0 0 .5rem">No encontramos ese nombre en las listas de momento. Si sabes que participas en algún proceso y crees que es un error de escritura, revísalo y prueba otra vez.${datosExtra()}</p>
+        <p style="margin:.6rem 0 .3rem"><button class="btn" id="n-pend">Aún no aparezco: avisadme cuando aparezca</button></p>`;
+      $("n-pend").onclick = async () => {
+        msg("Guardando…");
+        const { data: rr, error: e2 } = await sb.rpc("guardar_nombre_pendiente", { p_nombre: nom });
+        if (e2) return msg("No se pudo guardar: " + e2.message);
+        if (rr === "ok") { await aplicarExtras(msg); location.reload(); return; }
+        msg(rr === "ya_tiene" ? "Tu cuenta ya está vinculada: vuelve a entrar." : rr === "corto" ? "Escribe tu nombre completo." : "No se pudo guardar.");
+      };
     };
     return;
   }
@@ -1510,6 +1581,23 @@ async function adminInit() {
   ADMIN = true; $("ad-go").hidden = false;
 }
 $("ad-go").onclick = () => show("admin");
+async function adminSistema() {
+  const sum = $("sis-sum"), res = $("sis-res"), er = $("sis-err");
+  const e = await sb.rpc("admin_estado_sistema");
+  if (e.error) { res.innerHTML = `<span class="err">${esc(e.error.message)}</span> (¿has ejecutado antes_de_lanzar.sql en Supabase?)`; er.textContent = ""; return; }
+  const d = e.data || {}, h = d.procesador_ok ? (Date.now() - new Date(d.procesador_ok)) / 36e5 : null, mal = h === null || h > 3;
+  sum.innerHTML = `Estado del sistema ${mal ? '<span class="tag" style="background:var(--red-bg);color:var(--red)">⚠️ Procesador parado</span>' : '<span class="tag" style="background:var(--ok-bg);color:var(--ok)">✅ Todo en marcha</span>'}${d.errores_24h ? ` <span class="tag" style="background:var(--amb-bg);color:var(--amb)">🐞 ${d.errores_24h} error${d.errores_24h === 1 ? "" : "es"} en 24 h</span>` : ""}`;
+  if (mal) $("adm-sis").open = true;
+  res.innerHTML = h === null ? "Todavía no hay marca de vida del procesador: sube la versión nueva de <code>procesar_pdfs.py</code> y <code>avisos.py</code>."
+    : `Última pasada correcta del procesador: <strong>${haceTxt(d.procesador_ok)}</strong> (${new Date(d.procesador_ok).toLocaleString("es-ES", { dateStyle: "short", timeStyle: "short" })}).`
+      + (mal ? ' <strong style="color:var(--red)">Lleva más de 3 horas sin terminar bien: mira GitHub → docentscv-procesador → Actions.</strong>' : "");
+  const r = await sb.rpc("admin_errores", { p_dias: 7 });
+  if (r.error) { er.innerHTML = `<span class="err">${esc(r.error.message)}</span>`; return; }
+  const L = r.data || [];
+  er.innerHTML = L.length ? `<div class="scroll"><table><thead><tr><th>Error</th><th class="n">Veces</th><th>Dónde</th><th>Último</th></tr></thead><tbody>${L.map(x => `<tr><td style="max-width:28rem;word-break:break-word">${esc(x.msg)}${x.linea ? `<br><small class="note">línea ${x.linea}${x.fuente ? " · " + esc(x.fuente.replace(/^https?:\/\/[^/]+/, "")) : ""}</small>` : ""}</td><td class="n">${x.n}</td><td><small>${esc(x.pagina || "")}<br>${esc(x.disp || "")}</small></td><td><small>${haceTxt(x.ultimo)}</small></td></tr>`).join("")}</tbody></table></div>`
+    : "Ningún error en los últimos 7 días. 👍";
+}
+$("sis-borrar").onclick = async () => { if (!confirm("¿Vaciar la lista de errores? (Hazlo cuando los hayas revisado o arreglado.)")) return; await sb.rpc("admin_borrar_errores"); adminSistema(); };
 const MSG_TN = { sugerencia: "💡 Sugerencia", reclamacion: "📣 Reclamación", error: "🐞 Error / avería", otro: "Mensaje", especialidad: "✏️ Cambio de especialidad" };
 function adminBadge(n) { const b = $("av-btn"); if (!b) return; b.classList.toggle("pend", n > 0); b.dataset.n = n > 99 ? "99+" : String(n); b.setAttribute("aria-label", "Menú de usuario" + (n ? " (" + n + " mensajes pendientes)" : "")); $("ad-go").textContent = "Administración" + (n ? " · " + n + " pendiente" + (n === 1 ? "" : "s") : ""); }
 async function adminAviso() {
