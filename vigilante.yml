@@ -1,0 +1,74 @@
+# DocentsCV · Vigilante del procesador y de los errores de la web. Va en el repositorio PRIVADO docentscv-robot-social.
+# Cada hora mira cuándo fue la última pasada correcta del procesador (config 'procesador_ok').
+# Si pasan más de 3 horas, te avisa por Telegram (y repite cada 6 h mientras siga parado). Cuando vuelve, te avisa también.
+# También mira si ha aparecido algún error nuevo de la web (tabla errores_web) desde la última vez, y te lo manda por Telegram.
+# Usa secretos que ya existen en este repositorio: DATABASE_URL, TELEGRAM_BOT_TOKEN y ADMIN_CHAT_ID.
+name: Vigilante del procesador
+on:
+  schedule:
+    - cron: '41 * * * *'
+  workflow_dispatch:
+    inputs:
+      prueba:
+        description: 'Mandar un mensaje de prueba a Telegram'
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  vigilar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Instalar conector de base de datos
+        run: pip install --quiet --disable-pip-version-check psycopg2-binary
+      - name: Comprobar el procesador
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          ADMIN_CHAT_ID: ${{ secrets.ADMIN_CHAT_ID }}
+          PRUEBA: ${{ inputs.prueba }}
+        run: |
+          python3 - <<'PY'
+          import os, json, urllib.request, urllib.parse, datetime, psycopg2
+          LIMITE_H, REPETIR_H = 3, 6
+          def telegram(txt):
+              datos = urllib.parse.urlencode({'chat_id': os.environ['ADMIN_CHAT_ID'], 'text': txt}).encode()
+              urllib.request.urlopen(f"https://api.telegram.org/bot{os.environ['TELEGRAM_BOT_TOKEN']}/sendMessage", data=datos, timeout=30).read()
+          con = psycopg2.connect(os.environ['DATABASE_URL']); con.autocommit = True; cur = con.cursor()
+          def leer(k):
+              cur.execute("select valor from config where clave = %s", (k,)); r = cur.fetchone(); return r[0] if r and r[0] else None
+          def poner(k, v):
+              cur.execute("insert into config(clave, valor) values (%s, %s) on conflict (clave) do update set valor = excluded.valor", (k, v))
+          ahora = datetime.datetime.now(datetime.timezone.utc)
+          ok = leer('procesador_ok'); alerta = leer('vigilante_alerta')
+          horas = (ahora - datetime.datetime.fromisoformat(ok)).total_seconds() / 3600 if ok else None
+          print('última pasada correcta:', ok, '· horas:', None if horas is None else round(horas, 1))
+          if os.environ.get('PRUEBA') == 'true':
+              telegram(f"🧪 Prueba del vigilante de DocentsCV: la última pasada correcta del procesador fue hace {'?' if horas is None else round(horas, 1)} h.")
+          if horas is None:
+              print('Aún no hay marca de vida (sube la versión nueva del procesador).')
+          elif horas > LIMITE_H:
+              if not alerta or (ahora - datetime.datetime.fromisoformat(alerta)).total_seconds() > REPETIR_H * 3600:
+                  telegram(f"⚠️ DocentsCV: el procesador no termina bien desde hace {round(horas)} h.\n"
+                           "Las listas nuevas no se están cargando. Mira GitHub → docentscv-procesador → Actions y abre la última ejecución en rojo.")
+                  poner('vigilante_alerta', ahora.isoformat()); print('alerta enviada')
+          elif alerta:
+              telegram(f"✅ DocentsCV: el procesador vuelve a funcionar (última pasada correcta hace {round(horas * 60)} min).")
+              poner('vigilante_alerta', ''); print('aviso de recuperación enviado')
+
+          # --- Errores nuevos de la web ---
+          visto = leer('vigilante_err_visto')
+          if not visto:
+              poner('vigilante_err_visto', ahora.isoformat()); visto = ahora.isoformat()
+              print('primera vez: no se avisa de errores anteriores a ahora')
+          else:
+              cur.execute("select msg, disp, n from errores_web where primero > %s order by ultimo desc limit 8", (visto,))
+              nuevos = cur.fetchall()
+              if nuevos:
+                  lineas = "\n".join(f"• {m[:140]}" + (f" ({d})" if d else "") for m, d, n in nuevos)
+                  mas = f"\n…y {len(nuevos) - 8} más." if len(nuevos) > 8 else ""
+                  telegram(f"🐞 DocentsCV: {len(nuevos)} error{'es' if len(nuevos) != 1 else ''} nuevo{'s' if len(nuevos) != 1 else ''} en la web:\n{lineas}{mas}\n\nMira Administración → Estado del sistema para más detalle.")
+                  print(f'{len(nuevos)} error(es) nuevo(s) notificado(s)')
+              poner('vigilante_err_visto', ahora.isoformat())
+          PY

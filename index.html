@@ -1587,8 +1587,7 @@ async function adminSistema() {
   if (e.error) { res.innerHTML = `<span class="err">${esc(e.error.message)}</span> (¿has ejecutado antes_de_lanzar.sql en Supabase?)`; er.textContent = ""; return; }
   const d = e.data || {}, h = d.procesador_ok ? (Date.now() - new Date(d.procesador_ok)) / 36e5 : null, mal = h === null || h > 3;
   sum.innerHTML = `Estado del sistema ${mal ? '<span class="tag" style="background:var(--red-bg);color:var(--red)">⚠️ Procesador parado</span>' : '<span class="tag" style="background:var(--ok-bg);color:var(--ok)">✅ Todo en marcha</span>'}${d.errores_24h ? ` <span class="tag" style="background:var(--amb-bg);color:var(--amb)">🐞 ${d.errores_24h} error${d.errores_24h === 1 ? "" : "es"} en 24 h</span>` : ""}`;
-  if (mal) $("adm-sis").open = true;
-  res.innerHTML = h === null ? "Todavía no hay marca de vida del procesador: sube la versión nueva de <code>procesar_pdfs.py</code> y <code>avisos.py</code>."
+  res.innerHTML = h === null ? "Todavía no hay marca de vida del procesador: sube la versión nueva de <code>procesar_pdfs.py</code> y <code>avisos.py</code>, y en cuanto se ejecute una vez este aviso desaparecerá solo."
     : `Última pasada correcta del procesador: <strong>${haceTxt(d.procesador_ok)}</strong> (${new Date(d.procesador_ok).toLocaleString("es-ES", { dateStyle: "short", timeStyle: "short" })}).`
       + (mal ? ' <strong style="color:var(--red)">Lleva más de 3 horas sin terminar bien: mira GitHub → docentscv-procesador → Actions.</strong>' : "");
   const r = await sb.rpc("admin_errores", { p_dias: 7 });
