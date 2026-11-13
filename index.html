@@ -1338,7 +1338,7 @@ async function pagarPlay(auto) {
     if (v.ok) { msg.textContent = "¡Pago correcto! Ya tienes acceso."; setTimeout(() => renderApartado(), 800); }
     else { msg.textContent = PAGO_ERR[v.error] || "No hemos podido confirmar el pago. Inténtalo de nuevo o escríbenos."; btn.disabled = false; }
   } catch (e) {
-    msg.textContent = (e && e.name === "AbortError") ? "Pago cancelado." : "No se pudo completar el pago. Inténtalo de nuevo. [debug: " + (e && (e.name + ": " + e.message)) + "]"; btn.disabled = false;
+    msg.textContent = (e && e.name === "AbortError") ? "Pago cancelado." : "No se pudo completar el pago. Inténtalo de nuevo."; btn.disabled = false;
   }
 }
 /* Si ya pagó (otro móvil, reinstalación…) se recupera solo, sin pagar otra vez */
