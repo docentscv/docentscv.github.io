@@ -1325,7 +1325,7 @@ function pintarAcceso(ac) {
   if (!ac.cobro_activo || (ac.activo && !ac.en_prueba)) { box.innerHTML = ""; return; }
   if (ac.activo) {
     const n = ac.dias_restantes;
-    box.innerHTML = `<div class="sc" style="--c:var(--amb);--cb:var(--amb-bg);margin-top:1rem"><div class="sc-st"><i>🎁</i><div>Prueba gratuita: te ${n === 1 ? "queda 1 día" : "quedan " + n + " días"}<small>Después, ${pr} € por todo el curso${fin ? " (hasta el " + fin + ")" : ""}. Pago único, sin renovación automática.</small></div></div><div class="sc-b"><button class="btn ghost" id="pagar" style="padding:.5rem 1rem">¿No quieres esperar? Paga ya los ${pr} €</button><p class="note" id="pagar-msg" role="status" style="margin:.4rem 0 0"></p></div><div id="acc-valor"></div></div>`;
+    box.innerHTML = `<div class="sc" style="--c:var(--amb);--cb:var(--amb-bg);margin-top:1rem"><div class="sc-st"><i>🎁</i><div>Prueba gratuita: te ${n === 1 ? "queda 1 día" : "quedan " + n + " días"}<small>Después, ${pr} € por todo el curso${fin ? " (hasta el " + fin + ")" : ""}. Pago único, sin renovación automática.</small></div></div><div class="sc-b"><button class="btn" id="pagar" style="padding:.5rem 1rem">¿No quieres esperar? Paga ya los ${pr} €</button><p class="note" id="pagar-msg" role="status" style="margin:.4rem 0 0"></p></div><div id="acc-valor"></div></div>`;
     $("pagar").onclick = () => pagar();
     restaurarCompra(true); valorPrueba(); return;
   }
