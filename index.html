@@ -276,6 +276,11 @@ details.panel[open]>summary{margin-bottom:.8rem}
       </div>
     </div>
 
+    <div class="sc" id="android-card" style="--c:var(--gry);--cb:var(--gry-bg);margin:1rem 0" hidden>
+      <div class="sc-st"><i>📲</i><div>Descárgala en Android<small>La app de DocentsCV, con icono propio y notificaciones.</small></div></div>
+      <div class="sc-b"><a class="btn" id="android-card-go" href="#" target="_blank" rel="noopener" style="text-decoration:none">Descargar</a></div>
+    </div>
+
     <section class="redes" aria-label="Síguenos">
       <h2 class="sec" style="margin-top:1.4rem">Síguenos</h2>
       <p class="note" style="margin:.2rem 0 .7rem">Enterarte de cuándo salen las listas sin abrir la web.</p>
@@ -657,6 +662,18 @@ const REDES = { telegram: "https://t.me/DocentsCV", instagram: "https://www.inst
   if (!ios || standalone || descartada) return;
   card.hidden = false;
   const x = $("ios-card-x"); if (x) x.onclick = () => { card.hidden = true; try { localStorage.setItem("dcv_ios_x", "1"); } catch (e) {} };
+})();
+/* Enlace de descarga en Android. Mientras la app esté en revisión de Google, pon aquí el enlace de
+   «prueba cerrada» (Play Console → Pruebas → Prueba cerrada → tu lista → «Cómo probar tu app»).
+   Cuando ya esté publicada, cambia este enlace por el normal de la Play Store. Vacío = no se muestra. */
+const ANDROID_URL = "https://play.google.com/apps/testing/io.github.docentscv.app";
+(function () {
+  const card = $("android-card"); if (!card || !ANDROID_URL) return;
+  const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+  const standalone = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone;
+  if (ios || standalone) return;   // en iPhone sale su propia tarjeta; dentro de la app ya instalada no hace falta
+  $("android-card-go").href = ANDROID_URL;
+  card.hidden = false;
 })();
 
 /* ---------- navegación ---------- */
