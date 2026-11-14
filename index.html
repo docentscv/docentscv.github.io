@@ -1401,8 +1401,14 @@ async function comprobarPagoURL() {
   if (pago !== "ok") return;
   let intentos = 0;
   const comprobar = async () => {
-    const ac = await accesoInfo(), m = $("pagar-msg");
-    if (!ac.cobro_activo || (ac.activo && !ac.en_prueba)) { if (m) m.textContent = "¡Pago correcto! Ya tienes acceso."; setTimeout(() => renderApartado(), 1000); return; }
+    const ac = await accesoInfo();
+    if (!ac.cobro_activo || (ac.activo && !ac.en_prueba)) {
+      const box = $("acc-box");   // puede que el botón de pago ya no exista (el pago se confirmó muy rápido): el aviso va directo en la caja
+      if (box) box.innerHTML = `<div class="sc" style="--c:var(--ok);--cb:var(--ok-bg);margin-top:1rem"><div class="sc-st"><i>✅</i><div>¡Pago correcto!<small>Ya tienes acceso a todo el curso.</small></div></div></div>`;
+      setTimeout(() => renderApartado(), 2500);
+      return;
+    }
+    const m = $("pagar-msg");
     intentos++;
     if (m) m.textContent = "Confirmando tu pago…";
     if (intentos < 10) setTimeout(comprobar, 1500);
