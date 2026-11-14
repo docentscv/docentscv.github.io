@@ -653,13 +653,16 @@ const REDES = { telegram: "https://t.me/DocentsCV", instagram: "https://www.inst
   let pl = "pc"; try { const ua = navigator.userAgent || ""; pl = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1) ? "ios" : /Android/i.test(ua) ? "android" : "pc"; } catch (e) {}
   fetch(SUPABASE_URL + "/rest/v1/rpc/contar_visita", { method: "POST", headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ p_origen: o, p_plataforma: pl }) }).catch(() => {});
 })();
+/* Tarjetas de "cómo conseguir la app": en el móvil, cada quien ve solo la suya (iPhone o Android);
+   en ordenador (o cualquier otro caso) se ven las dos, para poder compartir cualquiera de las dos. */
+const ES_IOS = /iPhone|iPad|iPod/i.test(navigator.userAgent || "") || (/Macintosh/i.test(navigator.userAgent || "") && navigator.maxTouchPoints > 1);
+const ES_ANDROID = /Android/i.test(navigator.userAgent || "");
+const ES_STANDALONE = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone;
 /* Apple/iPhone: no hay app nativa — se instala como PWA desde Safari */
 (function () {
   const card = $("ios-card"); if (!card) return;
-  const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent || "");
-  const standalone = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone;
   let descartada = false; try { descartada = !!localStorage.getItem("dcv_ios_x"); } catch (e) {}
-  if (!ios || standalone || descartada) return;
+  if (ES_ANDROID || ES_STANDALONE || descartada) return;
   card.hidden = false;
   const x = $("ios-card-x"); if (x) x.onclick = () => { card.hidden = true; try { localStorage.setItem("dcv_ios_x", "1"); } catch (e) {} };
 })();
@@ -669,9 +672,7 @@ const REDES = { telegram: "https://t.me/DocentsCV", instagram: "https://www.inst
 const ANDROID_URL = "https://play.google.com/apps/testing/io.github.docentscv.app";
 (function () {
   const card = $("android-card"); if (!card || !ANDROID_URL) return;
-  const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent || "");
-  const standalone = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone;
-  if (ios || standalone) return;   // en iPhone sale su propia tarjeta; dentro de la app ya instalada no hace falta
+  if (ES_IOS || ES_STANDALONE) return;   // en iPhone sale su propia tarjeta; dentro de la app ya instalada no hace falta
   $("android-card-go").href = ANDROID_URL;
   card.hidden = false;
 })();
@@ -1487,7 +1488,17 @@ async function distCard(ac) {
 async function refTop(ac) {
   const box = $("ref-top"); if (!box) return; box.innerHTML = "";
   let data; try { data = (await sb.rpc("mi_referidos")).data; } catch (e) {} if (!data || data.gratis) return;
-  const l = refLinks(data.codigo), n = ac && ac.cobro_activo && ac.en_prueba ? ac.dias_restantes : null;
+  const l = refLinks(data.codigo);
+  const pagado = ac && ac.cobro_activo && ac.activo && !ac.en_prueba;   // ya pagado del todo: no tiene sentido ofrecer "consíguela gratis"
+  if (pagado) {
+    box.innerHTML = `<p class="note" style="margin:.6rem 1rem .8rem"><button class="link" id="rt-compartir">📣 Recomienda DocentsCV a tus compañeros</button></p>`;
+    $("rt-compartir").onclick = async () => {
+      if (navigator.share) { try { await navigator.share({ title: "DocentsCV", text: l.txt, url: REFWEB }); return; } catch (e) { if (e && e.name === "AbortError") return; } }
+      box.innerHTML = `<div class="note" style="margin:.4rem 1rem"><div class="filters"><a class="btn" href="${l.wa}" target="_blank" rel="noopener" style="text-decoration:none;background:#1f9d55">WhatsApp</a><a class="btn" href="${l.tg}" target="_blank" rel="noopener" style="text-decoration:none;background:#2a8fd4">Telegram</a></div></div>`;
+    };
+    return;
+  }
+  const n = ac && ac.cobro_activo && ac.en_prueba ? ac.dias_restantes : null;
   box.innerHTML = `<div class="sc" style="--c:var(--ok);--cb:var(--ok-bg);margin-top:1rem"><div class="sc-st"><i>🎁</i><div>${n != null ? "Te " + (n === 1 ? "queda 1 día" : "quedan " + n + " días") + " de prueba: ¡invita a tus compañeros!" : (ac && ac.cobro_activo && !ac.activo) ? "Tu prueba ha terminado, pero aún puedes conseguir la app gratis" : "Invita a tus compañeros y consigue la app gratis"}<small>Si 3 personas se registran con tu código y pagan, tu curso es gratis. Llevas <b>${data.pagados} de ${data.necesarios}</b>.</small></div></div>
     <div class="sc-b"><div class="filters"><a class="btn" href="${l.wa}" target="_blank" rel="noopener" style="text-decoration:none;background:#1f9d55">WhatsApp</a><a class="btn" href="${l.tg}" target="_blank" rel="noopener" style="text-decoration:none;background:#2a8fd4">Telegram</a><button class="link" id="rt-mas">Ver mi código</button></div></div></div>`;
   $("rt-mas").onclick = () => cfgAbrir("ajustes");
