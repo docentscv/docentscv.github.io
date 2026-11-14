@@ -1325,8 +1325,9 @@ function pintarAcceso(ac) {
   if (!ac.cobro_activo || (ac.activo && !ac.en_prueba)) { box.innerHTML = ""; return; }
   if (ac.activo) {
     const n = ac.dias_restantes;
-    box.innerHTML = `<div class="sc" style="--c:var(--amb);--cb:var(--amb-bg);margin-top:1rem"><div class="sc-st"><i>🎁</i><div>Prueba gratuita: te ${n === 1 ? "queda 1 día" : "quedan " + n + " días"}<small>Después, ${pr} € por todo el curso${fin ? " (hasta el " + fin + ")" : ""}. Pago único, sin renovación automática.</small></div></div><div id="acc-valor"></div></div>`;
-    valorPrueba(); return;
+    box.innerHTML = `<div class="sc" style="--c:var(--amb);--cb:var(--amb-bg);margin-top:1rem"><div class="sc-st"><i>🎁</i><div>Prueba gratuita: te ${n === 1 ? "queda 1 día" : "quedan " + n + " días"}<small>Después, ${pr} € por todo el curso${fin ? " (hasta el " + fin + ")" : ""}. Pago único, sin renovación automática.</small></div></div><div class="sc-b"><button class="btn ghost" id="pagar" style="padding:.5rem 1rem">¿No quieres esperar? Paga ya los ${pr} €</button><p class="note" id="pagar-msg" role="status" style="margin:.4rem 0 0"></p></div><div id="acc-valor"></div></div>`;
+    $("pagar").onclick = () => pagar();
+    restaurarCompra(true); valorPrueba(); return;
   }
   box.innerHTML = `<div class="sc" style="--c:var(--blu);--cb:var(--blu-bg);margin-top:1rem"><div class="sc-h"><b>Tu prueba gratuita ha terminado</b><span>Sigue viendo tu situación en las bolsas</span></div>
     <div class="sc-b"><div id="acc-valor"></div><ul class="l" style="margin:.4rem 0"><li>Tu puesto y cómo evoluciona en cada bolsa</li><li>Probabilidad de conseguir plaza</li><li>Oportunidades por centro y últimas adjudicaciones</li><li>Hasta dónde se llegó otros años</li></ul>
