@@ -8,6 +8,9 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DocentsCV">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
@@ -260,6 +263,19 @@ details.panel[open]>summary{margin-bottom:.8rem}
       <div><i>📈</i><p style="margin:0"><b>Tu evolución</b><span>Gráficas de tu puesto en los últimos 2 meses.</span></p></div>
       <div><i>🔒</i><p style="margin:0"><b>Datos oficiales</b><span>Sin nombres de personas en la consulta pública.</span></p></div>
     </div>
+
+    <div class="sc" id="ios-card" style="--c:var(--gry);--cb:var(--gry-bg);margin:1rem 0" hidden>
+      <div class="sc-st"><i>📱</i><div>Instala DocentsCV en tu iPhone<small>Así la tienes como una app, con su icono, sin pasar por la App Store.</small></div></div>
+      <div class="sc-b">
+        <ol class="l" style="margin:.2rem 0 .6rem">
+          <li>Pulsa <b>Compartir</b> <span aria-hidden="true">⬆️</span> en Safari.</li>
+          <li>Elige <b>«Añadir a pantalla de inicio»</b>.</li>
+          <li>Pulsa <b>Añadir</b>. Ya tienes el icono de DocentsCV.</li>
+        </ol>
+        <button class="link" id="ios-card-x">No, gracias</button>
+      </div>
+    </div>
+
     <section class="redes" aria-label="Síguenos">
       <h2 class="sec" style="margin-top:1.4rem">Síguenos</h2>
       <p class="note" style="margin:.2rem 0 .7rem">Enterarte de cuándo salen las listas sin abrir la web.</p>
@@ -632,6 +648,16 @@ const REDES = { telegram: "https://t.me/DocentsCV", instagram: "https://www.inst
   let pl = "pc"; try { const ua = navigator.userAgent || ""; pl = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1) ? "ios" : /Android/i.test(ua) ? "android" : "pc"; } catch (e) {}
   fetch(SUPABASE_URL + "/rest/v1/rpc/contar_visita", { method: "POST", headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ p_origen: o, p_plataforma: pl }) }).catch(() => {});
 })();
+/* Apple/iPhone: no hay app nativa — se instala como PWA desde Safari */
+(function () {
+  const card = $("ios-card"); if (!card) return;
+  const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+  const standalone = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone;
+  let descartada = false; try { descartada = !!localStorage.getItem("dcv_ios_x"); } catch (e) {}
+  if (!ios || standalone || descartada) return;
+  card.hidden = false;
+  const x = $("ios-card-x"); if (x) x.onclick = () => { card.hidden = true; try { localStorage.setItem("dcv_ios_x", "1"); } catch (e) {} };
+})();
 
 /* ---------- navegación ---------- */
 function show(v) {
@@ -731,7 +757,7 @@ function fillConsulta() {
 }
 const t0 = Date.now();
 initAuth();
-init().finally(() => setTimeout(() => { consultaInit(); READY = true; if (RECOVERY) { show("auth"); authMode("nueva"); } else { show("home"); onbInit(); } $("splash").classList.add("out"); }, Math.max(0, 1300 - (Date.now() - t0))));
+init().finally(() => setTimeout(() => { consultaInit(); READY = true; if (RECOVERY) { show("auth"); authMode("nueva"); } else { show("home"); onbInit(); comprobarPagoURL(); } $("splash").classList.add("out"); }, Math.max(0, 1300 - (Date.now() - t0))));
 
 /* ---------- estimación común ---------- */
 async function estimateHTML(cuerpo, esp, my) {
@@ -1307,11 +1333,11 @@ function pintarAcceso(ac) {
     <div class="sc-p" style="--pc:var(--blu);--pb:var(--blu-bg)"><div class="t">Todo el curso</div><div class="v">${pr} €</div><div class="d">${pr === "4,99" ? "Precio especial por incorporarte a mitad de curso. " : ""}Pago único${fin ? ", con acceso hasta el " + fin : ""}. Sin renovación automática.</div></div>
     <p style="margin:1rem 0 .3rem"><button class="btn" id="pagar" style="font-size:1.1rem;padding:.7rem 1.4rem">Pagar ${pr} €</button></p>
     <p class="note" id="pagar-msg" role="status"></p></div></div>`;
-  $("pagar").onclick = () => pagarPlay(false);
+  $("pagar").onclick = () => pagar();
   restaurarCompra(true); valorPrueba();
 }
 
-/* ---------- Pago con Google Play (solo dentro de la app de Android) ---------- */
+/* ---------- Pago: Google Play dentro de la app Android, o tarjeta (Stripe) desde la web ---------- */
 const PLAY_PRODUCTO = "curso_2026_27", PLAY_URL = "https://play.google.com/store/apps/details?id=io.github.docentscv.app";
 async function servicioPlay() {
   if (!("getDigitalGoodsService" in window)) return null;
@@ -1323,10 +1349,12 @@ async function verificarCompra(token) {
   return await r.json().catch(() => ({ ok: false, error: "error_interno" }));
 }
 const PAGO_ERR = { pendiente: "Tu pago está pendiente de confirmación. Cuando Google lo confirme se activará el acceso.", anulada: "Google indica que esa compra está anulada o reembolsada.", recibo_de_otra_cuenta: "Esa compra pertenece a otra cuenta de DocentsCV.", recibo_no_valido: "Google no ha reconocido la compra. Si te han cobrado, escríbenos y lo resolvemos." };
-async function pagarPlay(auto) {
+/* Decide con cuál de los dos pagar: Google Play si estamos dentro de la app Android, si no, tarjeta (Stripe) */
+async function pagar() { const srv = await servicioPlay(); if (srv) return pagarPlay(false, srv); return pagarStripe(); }
+async function pagarPlay(auto, srvCache) {
   const msg = $("pagar-msg"), btn = $("pagar"); if (!msg) return;
-  const srv = await servicioPlay();
-  if (!srv) { msg.innerHTML = `El pago se hace desde la app de Android. <a href="${PLAY_URL}" target="_blank" rel="noopener">Abre DocentsCV en Google Play</a> e inicia sesión con la misma cuenta.`; return; }
+  const srv = srvCache || await servicioPlay();
+  if (!srv) return pagarStripe();
   btn.disabled = true; msg.textContent = "Abriendo Google Play…";
   try {
     const det = await srv.getDetails([PLAY_PRODUCTO]);
@@ -1348,6 +1376,38 @@ async function restaurarCompra(silencioso) {
     const lista = await srv.listPurchases();
     for (const c of lista || []) { if (c.itemId === PLAY_PRODUCTO) { const v = await verificarCompra(c.purchaseToken); if (v.ok) { renderApartado(); return; } } }
   } catch (e) {}
+}
+/* Pago con tarjeta desde la web (iPhone, navegador sin la app, etc.): abre Stripe Checkout */
+async function pagarStripe() {
+  const msg = $("pagar-msg"), btn = $("pagar"); if (!msg) return;
+  btn.disabled = true; msg.textContent = "Abriendo el pago seguro…";
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) { msg.textContent = "Vuelve a iniciar sesión e inténtalo de nuevo."; btn.disabled = false; return; }
+    const r = await fetch(SUPABASE_URL + "/functions/v1/crear_pago_stripe", { method: "POST", headers: { "Content-Type": "application/json", apikey: SUPABASE_KEY, Authorization: "Bearer " + session.access_token }, body: "{}" });
+    const j = await r.json().catch(() => ({ ok: false }));
+    if (!j.ok || !j.url) { msg.textContent = j.error === "stripe_no_configurado" ? "El pago con tarjeta todavía no está activado. Prueba más tarde." : "No se pudo abrir el pago. Inténtalo de nuevo."; btn.disabled = false; return; }
+    location.href = j.url;
+  } catch (e) { msg.textContent = "No se pudo abrir el pago. Inténtalo de nuevo."; btn.disabled = false; }
+}
+/* Al volver de Stripe (pago hecho o cancelado) */
+async function comprobarPagoURL() {
+  let pago = ""; try { pago = new URLSearchParams(location.search).get("pago") || ""; } catch (e) {}
+  if (!pago) return;
+  history.replaceState(null, "", location.pathname);
+  show("apartado");
+  if (pago === "cancelado") { setTimeout(() => { const m = $("pagar-msg"); if (m) m.textContent = "Pago cancelado."; }, 400); return; }
+  if (pago !== "ok") return;
+  let intentos = 0;
+  const comprobar = async () => {
+    const ac = await accesoInfo(), m = $("pagar-msg");
+    if (!ac.cobro_activo || (ac.activo && !ac.en_prueba)) { if (m) m.textContent = "¡Pago correcto! Ya tienes acceso."; setTimeout(() => renderApartado(), 1000); return; }
+    intentos++;
+    if (m) m.textContent = "Confirmando tu pago…";
+    if (intentos < 10) setTimeout(comprobar, 1500);
+    else if (m) m.textContent = "Tu pago se está procesando. Si tarda más de un minuto, actualiza la página.";
+  };
+  setTimeout(comprobar, 600);
 }
 
 function domInit() {
