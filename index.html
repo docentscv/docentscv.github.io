@@ -618,7 +618,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
     let app = ""; try { if (matchMedia("(display-mode: standalone)").matches) app = " · app"; } catch (e) {} return so + " · " + nav + app; };
   const enviar = (msg, fuente, linea) => {
     msg = String(msg || "").slice(0, 300);
-    if (!msg || n >= 5 || /^Script error\.?$/i.test(msg) || /ResizeObserver loop/i.test(msg) || /extension:\/\//.test(fuente || "")) return;
+    if (!msg || n >= 5 || /^Script error\.?$/i.test(msg) || /ResizeObserver loop/i.test(msg) || /extension:\/\//.test(fuente || "") || /iabjs:\/\//.test(fuente || "") || /Java object is gone/i.test(msg)) return;
     const k = msg + "|" + fuente + "|" + linea; if (vistos.has(k)) return; vistos.add(k); n++;
     let pag = ""; try { pag = (document.querySelector("main.view:not([hidden])") || {}).id || location.hash || "/"; } catch (e) {}
     try { fetch(URL, { method: "POST", keepalive: true, headers: { apikey: KEY, Authorization: "Bearer " + KEY, "Content-Type": "application/json" },
