@@ -1491,10 +1491,10 @@ async function refTop(ac) {
   const l = refLinks(data.codigo);
   const pagado = ac && ac.cobro_activo && ac.activo && !ac.en_prueba;   // ya pagado del todo: no tiene sentido ofrecer "consíguela gratis"
   if (pagado) {
-    box.innerHTML = `<p class="note" style="margin:.6rem 1rem .8rem"><button class="link" id="rt-compartir">📣 Recomienda DocentsCV a tus compañeros</button></p>`;
+    box.innerHTML = `<p class="note" style="margin:.6rem 1rem .8rem;text-align:right"><button class="link" id="rt-compartir">📣 Recomienda DocentsCV a tus compañeros</button></p>`;
     $("rt-compartir").onclick = async () => {
       if (navigator.share) { try { await navigator.share({ title: "DocentsCV", text: l.txt, url: REFWEB }); return; } catch (e) { if (e && e.name === "AbortError") return; } }
-      box.innerHTML = `<div class="note" style="margin:.4rem 1rem"><div class="filters"><a class="btn" href="${l.wa}" target="_blank" rel="noopener" style="text-decoration:none;background:#1f9d55">WhatsApp</a><a class="btn" href="${l.tg}" target="_blank" rel="noopener" style="text-decoration:none;background:#2a8fd4">Telegram</a></div></div>`;
+      box.innerHTML = `<div class="note" style="margin:.4rem 1rem;text-align:right"><div class="filters" style="justify-content:flex-end"><a class="btn" href="${l.wa}" target="_blank" rel="noopener" style="text-decoration:none;background:#1f9d55">WhatsApp</a><a class="btn" href="${l.tg}" target="_blank" rel="noopener" style="text-decoration:none;background:#2a8fd4">Telegram</a></div></div>`;
     };
     return;
   }
