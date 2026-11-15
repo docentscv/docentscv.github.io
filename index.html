@@ -11,6 +11,19 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="DocentsCV">
+<meta name="description" content="Tu puesto en las bolsas de interinos de la Comunitat Valenciana, siempre al día: adjudicaciones, alertas y evolución de tu posición.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="DocentsCV">
+<meta property="og:title" content="DocentsCV – Adjudicaciones para el profesorado interino">
+<meta property="og:description" content="Tu puesto en las bolsas de interinos de la Comunitat Valenciana, siempre al día: adjudicaciones, alertas y evolución de tu posición.">
+<meta property="og:url" content="https://docentscv.github.io/">
+<meta property="og:image" content="https://docentscv.github.io/icons/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="DocentsCV – Adjudicaciones para el profesorado interino">
+<meta name="twitter:description" content="Tu puesto en las bolsas de interinos de la Comunitat Valenciana, siempre al día.">
+<meta name="twitter:image" content="https://docentscv.github.io/icons/og-image.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
@@ -471,6 +484,8 @@ details.panel[open]>summary{margin-bottom:.8rem}
       <div id="us-res" class="note">Cargando…</div>
       <div class="filters" style="margin:.4rem 0 .2rem"><label>🎁 Acceso gratuito, como si hubiera pagado · correo de la persona <input id="rg-mail" type="email" placeholder="correo@ejemplo.com" autocomplete="off" style="min-width:min(20rem,80vw)"></label><button class="btn" id="rg-dar">Dar acceso gratis</button><button class="link" id="rg-quitar">Quitar acceso gratuito</button></div>
       <p class="note" id="rg-msg" role="status" style="margin:.2rem 0 .6rem">La persona tiene que haberse registrado antes. Dura hasta fin de curso y no cuenta como pago ni como referido.</p>
+      <div class="filters" style="margin:.4rem 0 .2rem"><label>↩️ Anular un pago (reembolso) · correo de la persona <input id="rb-mail" type="email" placeholder="correo@ejemplo.com" autocomplete="off" style="min-width:min(20rem,80vw)"></label><button class="link" id="rb-quitar" style="color:var(--rd,#c0392b)">Quitar acceso por reembolso</button></div>
+      <p class="note" id="rb-msg" role="status" style="margin:.2rem 0 .6rem">Úsalo cuando reembolses un pago (Stripe o Google Play) para que la persona pierda el acceso de inmediato. No afecta a los accesos regalados.</p>
       <div class="filters"><label>Buscar <input id="us-q" type="search" placeholder="Correo o nombre"></label>
         <label>Estado <select id="us-est"><option value="">Todos</option><option value="pagado">Pagado</option><option value="regalo">Acceso gratuito (regalo)</option><option value="en_prueba">En prueba</option><option value="prueba_terminada">Prueba terminada</option><option value="pago_caducado">Pago caducado</option><option value="registrado">Registrado (sin cobro activo)</option><option value="sin_identificar">Sin identificar</option><option value="sin_confirmar">✉️ Sin confirmar el correo</option></select></label></div>
       <div class="scroll"><table><thead><tr><th>Correo</th><th>Nombre</th><th>Alta</th><th>Estado</th><th>Pagó el</th><th>Válido hasta</th><th></th></tr></thead><tbody id="us-rows"></tbody></table></div>
@@ -1343,7 +1358,7 @@ function pintarAcceso(ac) {
   if (!ac.cobro_activo || (ac.activo && !ac.en_prueba)) { box.innerHTML = ""; return; }
   if (ac.activo) {
     const n = ac.dias_restantes;
-    box.innerHTML = `<div class="sc" style="--c:var(--amb);--cb:var(--amb-bg);margin-top:1rem"><div class="sc-st"><i>🎁</i><div>Prueba gratuita: te ${n === 1 ? "queda 1 día" : "quedan " + n + " días"}<small>Después, ${pr} € por todo el curso${fin ? " (hasta el " + fin + ")" : ""}. Pago único, sin renovación automática.</small></div></div><div class="sc-b"><button class="btn" id="pagar" style="padding:.5rem 1rem">¿No quieres esperar? Paga ya los ${pr} €</button><p class="note" id="pagar-msg" role="status" style="margin:.4rem 0 0"></p></div><div id="acc-valor"></div></div>`;
+    box.innerHTML = `<div class="sc" style="--c:var(--amb);--cb:var(--amb-bg);margin-top:1rem"><div class="sc-st"><i>🎁</i><div>Prueba gratuita: te ${n === 1 ? "queda 1 día" : "quedan " + n + " días"}<small>Después, ${pr} € por todo el curso${fin ? " (hasta el " + fin + ")" : ""}. Pago único, sin renovación automática.</small></div></div><div class="sc-b"><button class="btn" id="pagar" style="padding:.5rem 1rem">¿No quieres esperar? Paga ya los ${pr} €</button><p class="note" id="pagar-msg" role="status" style="margin:.4rem 0 0"></p>${pr === "4,99" ? `<p class="note" style="margin:.3rem 0 0;font-size:.8rem">El precio de 4,99 € es especial por incorporarte este curso. El curso 2027-28 será de 7,49 €.</p>` : ""}</div><div id="acc-valor"></div></div>`;
     $("pagar").onclick = () => pagar();
     restaurarCompra(true); valorPrueba(); return;
   }
@@ -1351,7 +1366,7 @@ function pintarAcceso(ac) {
     <div class="sc-b"><div id="acc-valor"></div><ul class="l" style="margin:.4rem 0"><li>Tu puesto y cómo evoluciona en cada bolsa</li><li>Probabilidad de conseguir plaza</li><li>Oportunidades por centro y últimas adjudicaciones</li><li>Hasta dónde se llegó otros años</li></ul>
     <div class="sc-p" style="--pc:var(--blu);--pb:var(--blu-bg)"><div class="t">Todo el curso</div><div class="v">${pr} €</div><div class="d">${pr === "4,99" ? "Precio especial por incorporarte a mitad de curso. " : ""}Pago único${fin ? ", con acceso hasta el " + fin : ""}. Sin renovación automática.</div></div>
     <p style="margin:1rem 0 .3rem"><button class="btn" id="pagar" style="font-size:1.1rem;padding:.7rem 1.4rem">Pagar ${pr} €</button></p>
-    <p class="note" id="pagar-msg" role="status"></p></div></div>`;
+    <p class="note" id="pagar-msg" role="status"></p>${pr === "4,99" ? `<p class="note" style="margin:.3rem 0 0;font-size:.8rem">El precio de 4,99 € es especial por incorporarte este curso. El curso 2027-28 será de 7,49 €.</p>` : ""}</div></div>`;
   $("pagar").onclick = () => pagar();
   restaurarCompra(true); valorPrueba();
 }
@@ -1486,20 +1501,23 @@ async function distCard(ac) {
   box.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 async function refTop(ac) {
-  const box = $("ref-top"); if (!box) return; box.innerHTML = "";
+  const boxTop = $("ref-top"); if (boxTop) boxTop.innerHTML = "";
+  const slot = $("rt-slot"); if (slot) slot.innerHTML = "";
   let data; try { data = (await sb.rpc("mi_referidos")).data; } catch (e) {} if (!data || data.gratis) return;
   const l = refLinks(data.codigo);
   const pagado = ac && ac.cobro_activo && ac.activo && !ac.en_prueba;   // ya pagado del todo: no tiene sentido ofrecer "consíguela gratis"
   if (pagado) {
-    box.innerHTML = `<p class="note" style="margin:.6rem 1rem .8rem;text-align:right"><button class="link" id="rt-compartir">📣 Recomienda DocentsCV a tus compañeros</button></p>`;
+    const box = slot || boxTop; if (!box) return;
+    box.innerHTML = `<p class="note" style="margin:0;text-align:right"><button class="link" id="rt-compartir">📣 Recomienda DocentsCV a tus compañeros</button></p>`;
     $("rt-compartir").onclick = async () => {
       if (navigator.share) { try { await navigator.share({ title: "DocentsCV", text: l.txt, url: REFWEB }); return; } catch (e) { if (e && e.name === "AbortError") return; } }
-      box.innerHTML = `<div class="note" style="margin:.4rem 1rem;text-align:right"><div class="filters" style="justify-content:flex-end"><a class="btn" href="${l.wa}" target="_blank" rel="noopener" style="text-decoration:none;background:#1f9d55">WhatsApp</a><a class="btn" href="${l.tg}" target="_blank" rel="noopener" style="text-decoration:none;background:#2a8fd4">Telegram</a></div></div>`;
+      box.innerHTML = `<div class="note" style="margin:0;text-align:right"><div class="filters" style="justify-content:flex-end"><a class="btn" href="${l.wa}" target="_blank" rel="noopener" style="text-decoration:none;background:#1f9d55">WhatsApp</a><a class="btn" href="${l.tg}" target="_blank" rel="noopener" style="text-decoration:none;background:#2a8fd4">Telegram</a></div></div>`;
     };
     return;
   }
+  if (!boxTop) return;
   const n = ac && ac.cobro_activo && ac.en_prueba ? ac.dias_restantes : null;
-  box.innerHTML = `<div class="sc" style="--c:var(--ok);--cb:var(--ok-bg);margin-top:1rem"><div class="sc-st"><i>🎁</i><div>${n != null ? "Te " + (n === 1 ? "queda 1 día" : "quedan " + n + " días") + " de prueba: ¡invita a tus compañeros!" : (ac && ac.cobro_activo && !ac.activo) ? "Tu prueba ha terminado, pero aún puedes conseguir la app gratis" : "Invita a tus compañeros y consigue la app gratis"}<small>Si 3 personas se registran con tu código y pagan, tu curso es gratis. Llevas <b>${data.pagados} de ${data.necesarios}</b>.</small></div></div>
+  boxTop.innerHTML = `<div class="sc" style="--c:var(--ok);--cb:var(--ok-bg);margin-top:1rem"><div class="sc-st"><i>🎁</i><div>${n != null ? "Te " + (n === 1 ? "queda 1 día" : "quedan " + n + " días") + " de prueba: ¡invita a tus compañeros!" : (ac && ac.cobro_activo && !ac.activo) ? "Tu prueba ha terminado, pero aún puedes conseguir la app gratis" : "Invita a tus compañeros y consigue la app gratis"}<small>Si 3 personas se registran con tu código y pagan, tu curso es gratis. Llevas <b>${data.pagados} de ${data.necesarios}</b>.</small></div></div>
     <div class="sc-b"><div class="filters"><a class="btn" href="${l.wa}" target="_blank" rel="noopener" style="text-decoration:none;background:#1f9d55">WhatsApp</a><a class="btn" href="${l.tg}" target="_blank" rel="noopener" style="text-decoration:none;background:#2a8fd4">Telegram</a><button class="link" id="rt-mas">Ver mi código</button></div></div></div>`;
   $("rt-mas").onclick = () => cfgAbrir("ajustes");
 }
@@ -1612,7 +1630,7 @@ async function renderApartado() {
   bolTxt += profExtra.map(c => { const e = ESPU.find(x => x.codigo === c); return `<span class="tag" style="margin:.15rem .25rem 0 0" title="Añadida por administración: cuenta para los avisos; tu puesto saldrá cuando aparezcas en una lista">${esc(c)} · ${esc(e ? e.nombre : "")} ✍️</span>`; }).join("");
   profMia = [...new Set([...profMia, ...profMan])];
   const pn = (idn.split(",")[1] || idn).trim().toLowerCase().replace(/(^|\s)\S/g, c => c.toUpperCase());
-  $("perfil").innerHTML = `<div class="h">Hola, ${esc(pn)} 👋</div><div class="nm">${esc(idn)}</div>${espTxt || bolTxt ? `<div class="espfila"><div>${espTxt}${bolTxt}</div><button class="link" id="esp-pedir" type="button">✏️ Pedir cambio de especialidad</button></div>` : ""}`;
+  $("perfil").innerHTML = `<div class="h">Hola, ${esc(pn)} 👋</div><div class="nm">${esc(idn)}</div>${espTxt || bolTxt ? `<div class="espfila"><div>${espTxt}${bolTxt}</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:.3rem" id="esp-pedir-col"><div id="rt-slot"></div><button class="link" id="esp-pedir" type="button">✏️ Pedir cambio de especialidad</button></div></div>` : ""}`;
   if ($("esp-pedir")) $("esp-pedir").onclick = () => espPedir(espMia, profMia);
   $("ajustes").hidden = false; await geoCargar();
   $("ajustes-body").innerHTML = `<p class="note" style="margin:0 0 .4rem">Si hay un error en tu nombre o especialidades, escríbenos para corregirlo.</p>
@@ -1781,6 +1799,16 @@ async function regalo(mail, on) {
 }
 $("rg-dar").onclick = () => regalo($("rg-mail").value, true);
 $("rg-quitar").onclick = () => regalo($("rg-mail").value, false);
+const RB_MSG = { ok: "Listo.", no_existe: "No hay ninguna cuenta con ese correo.", no_autorizado: "No tienes permiso." };
+async function quitarPorReembolso(mail) {
+  mail = (mail || "").trim(); const box = $("rb-msg");
+  if (!mail) { box.textContent = "Escribe el correo de la persona."; return; }
+  if (!confirm("¿Quitar el acceso de pago a " + mail + "? Úsalo solo si le has hecho un reembolso.")) return;
+  const { data, error } = await sb.rpc("admin_quitar_acceso", { p_email: mail });
+  box.textContent = error ? "No se pudo: " + error.message : data === "ok" ? "Acceso quitado a " + mail + "." : (RB_MSG[data] || data);
+  if (!error && data === "ok") { $("rb-mail").value = ""; adminUsuarios(); }
+}
+$("rb-quitar").onclick = () => quitarPorReembolso($("rb-mail").value);
 async function adminEmbudo() {
   const box = $("emb-res"); if (!box) return;
   const { data, error } = await sb.rpc("admin_embudo", { p_dias: +$("emb-dias").value });
