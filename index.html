@@ -499,7 +499,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
       <p class="note" id="rb-msg" role="status" style="margin:.2rem 0 .6rem">Úsalo cuando reembolses un pago (Stripe o Google Play) para que la persona pierda el acceso de inmediato. No afecta a los accesos regalados.</p>
       <div class="filters"><label>Buscar <input id="us-q" type="search" placeholder="Correo o nombre"></label>
         <label>Estado <select id="us-est"><option value="">Todos</option><option value="pagado">Pagado</option><option value="regalo">Acceso gratuito (regalo)</option><option value="en_prueba">En prueba</option><option value="prueba_terminada">Prueba terminada</option><option value="pago_caducado">Pago caducado</option><option value="registrado">Registrado (sin cobro activo)</option><option value="sin_identificar">Sin identificar</option><option value="sin_confirmar">✉️ Sin confirmar el correo</option></select></label></div>
-      <div class="scroll"><table><thead><tr><th>Correo</th><th>Nombre</th><th>Alta</th><th>Estado</th><th>Pagó el</th><th>Válido hasta</th><th></th></tr></thead><tbody id="us-rows"></tbody></table></div>
+      <div class="scroll"><table><thead><tr><th></th><th>Correo</th><th>Alta</th><th>Pagó el</th><th>Válido hasta</th></tr></thead><tbody id="us-rows"></tbody></table></div>
     </details>
 
     <details class="panel" id="adm-emb">
@@ -2034,7 +2034,21 @@ async function adminUsuarios() {
 function usuPintar() {
   const q = $("us-q").value.trim().toLowerCase(), es = $("us-est").value, f = d => d ? new Date(d).toLocaleDateString("es-ES") : "—";
   const fil = USU.filter(u => (!es || (es === "regalo" ? u.origen === "regalo" && u.estado === "pagado" : es === "sin_confirmar" ? u.confirmado === false : u.estado === es)) && (!q || ((u.email || "") + " " + (u.nombre || "")).toLowerCase().includes(q)));
-  $("us-rows").innerHTML = fil.length ? fil.slice(0, 500).map(u => `<tr><td>${esc(u.email)}</td><td>${esc(u.nombre || "—")}</td><td>${f(u.alta)}</td><td>${esc(u.origen === "regalo" && u.estado === "pagado" ? EST_US.regalo : EST_US[u.estado] || u.estado)}${u.confirmado === false ? `<br><span class="tag" style="background:var(--amb-bg);color:var(--amb)">✉️ Sin confirmar el correo</span> <button class="link" data-cf="${esc(u.email)}">Confirmar</button>` : ""}${u.esp_maestros ? `<br><button class="link" data-ue="${esc(u.email)}" data-uesp="${esc((u.esp_maestros || []).join(","))}" data-uprof="${esc((u.esp_profesor || []).join(","))}" data-ulis="${esc((u.bolsas_listas || []).join(","))}" title="Cambiar sus especialidades">✏️ Especialidades: ${esc([(u.esp_maestros || []).length ? "Maestros " + u.esp_maestros.join(", ") : "", [...new Set([...(u.bolsas_listas || []), ...(u.esp_profesor || [])])].length ? "Profesorado " + [...new Set([...(u.bolsas_listas || []), ...(u.esp_profesor || [])])].join(", ") : ""].filter(Boolean).join(" · ") || "ninguna")}</button>` : ""}</td><td>${u.estado === "pagado" || u.estado === "pago_caducado" ? f(u.pagado_el) : "—"}</td><td>${u.pagado_hasta ? fmtF(u.pagado_hasta) : "—"}</td><td>${u.origen === "regalo" && u.estado === "pagado" ? `<button class="link" data-rg="0" data-m="${esc(u.email)}">Quitar regalo</button>` : u.estado === "pagado" ? "" : `<button class="link" data-rg="1" data-m="${esc(u.email)}">🎁 Dar acceso gratis</button>`}</td></tr>`).join("") : '<tr><td colspan="7">Sin resultados.</td></tr>';
+  $("us-rows").innerHTML = fil.length ? fil.slice(0, 500).map((u, i) => {
+    const esp = u.esp_maestros ? [(u.esp_maestros || []).length ? "Maestros " + u.esp_maestros.join(", ") : "", [...new Set([...(u.bolsas_listas || []), ...(u.esp_profesor || [])])].length ? "Profesorado " + [...new Set([...(u.bolsas_listas || []), ...(u.esp_profesor || [])])].join(", ") : ""].filter(Boolean).join(" · ") || "ninguna" : null;
+    return `<tr class="us-main"><td><button class="link" data-tog="${i}" aria-expanded="false" style="font-size:1rem">▾</button></td><td>${esc(u.email)}</td><td>${u.estado === "pagado" || u.estado === "pago_caducado" ? f(u.pagado_el) : "—"}</td><td>${u.pagado_hasta ? fmtF(u.pagado_hasta) : "—"}</td></tr>
+    <tr class="us-det" data-det="${i}" hidden><td></td><td colspan="3">
+      <p class="note" style="margin:.1rem 0"><strong>Nombre:</strong> ${esc(u.nombre || "—")} · <strong>Alta:</strong> ${f(u.alta)} · <strong>Estado:</strong> ${esc(u.origen === "regalo" && u.estado === "pagado" ? EST_US.regalo : EST_US[u.estado] || u.estado)}</p>
+      ${esp !== null ? `<p class="note" style="margin:.1rem 0">✏️ Especialidades: ${esc(esp)} <button class="link" data-ue="${esc(u.email)}" data-uesp="${esc((u.esp_maestros || []).join(","))}" data-uprof="${esc((u.esp_profesor || []).join(","))}" data-ulis="${esc((u.bolsas_listas || []).join(","))}" title="Cambiar sus especialidades">Cambiar</button></p>` : ""}
+      ${u.confirmado === false ? `<p class="note" style="margin:.1rem 0"><span class="tag" style="background:var(--amb-bg);color:var(--amb)">✉️ Sin confirmar el correo</span> <button class="link" data-cf="${esc(u.email)}">Confirmar</button></p>` : ""}
+      <p style="margin:.3rem 0 0">${u.origen === "regalo" && u.estado === "pagado" ? `<button class="link" data-rg="0" data-m="${esc(u.email)}">Quitar regalo</button>` : u.estado === "pagado" ? "" : `<button class="link" data-rg="1" data-m="${esc(u.email)}">🎁 Dar acceso gratis</button>`}</p>
+    </td></tr>`;
+  }).join("") : '<tr><td colspan="4">Sin resultados.</td></tr>';
+  $("us-rows").querySelectorAll("button[data-tog]").forEach(b => b.onclick = () => {
+    const det = $("us-rows").querySelector(`tr.us-det[data-det="${b.dataset.tog}"]`);
+    if (!det) return;
+    det.hidden = !det.hidden; b.textContent = det.hidden ? "▾" : "▴"; b.setAttribute("aria-expanded", String(!det.hidden));
+  });
   $("us-rows").querySelectorAll("button[data-rg]").forEach(b => b.onclick = () => regalo(b.dataset.m, b.dataset.rg === "1"));
   $("us-rows").querySelectorAll("button[data-cf]").forEach(b => b.onclick = () => confirmarEmail(b.dataset.cf));
   $("us-rows").querySelectorAll("button[data-ue]").forEach(b => b.onclick = () => espPedir(b.dataset.uesp.split(",").filter(Boolean), (b.dataset.uprof || "").split(",").filter(Boolean), b.dataset.ue, (b.dataset.ulis || "").split(",").filter(Boolean)));
