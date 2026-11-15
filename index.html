@@ -294,9 +294,9 @@ details.panel[open]>summary{margin-bottom:.8rem}
     <div class="sc" id="android-card" style="--c:var(--gry);--cb:var(--gry-bg);margin:1rem 0" hidden>
       <div class="sc-st"><i>📲</i><div>Descárgala en Android<small>La app de DocentsCV, con icono propio y notificaciones.</small></div></div>
       <div class="sc-b">
-        <p class="note" style="margin:0 0 .5rem">🧪 Todavía está en fase de pruebas de Google: antes de descargarla, tienes que unirte como probador (solo una vez).</p>
+        <p class="note" style="margin:0 0 .5rem">🧪 Todavía está en fase de pruebas de Google: antes de descargarla, pídenos acceso una vez (solo tienes que decirnos tu correo).</p>
         <div class="filters" style="margin:0 0 .3rem">
-          <a class="btn" id="android-card-grupo" href="#" target="_blank" rel="noopener" style="text-decoration:none;background:var(--muted)" hidden>1. Unirme como probador</a>
+          <a class="btn" id="android-card-grupo" href="#" style="text-decoration:none;background:var(--muted)" hidden>1. Pedir acceso (por email)</a>
           <a class="btn" id="android-card-go" href="#" target="_blank" rel="noopener" style="text-decoration:none">2. Descargar</a>
         </div>
       </div>
@@ -934,10 +934,12 @@ const ES_STANDALONE = (window.matchMedia && matchMedia("(display-mode: standalon
    «prueba cerrada» (Play Console → Pruebas → Prueba cerrada → tu lista → «Cómo probar tu app»).
    Cuando ya esté publicada, cambia este enlace por el normal de la Play Store. Vacío = no se muestra. */
 const ANDROID_URL = "https://play.google.com/apps/testing/io.github.docentscv.app";
-/* Enlace para unirse al Grupo de Google que usas como lista de probadores (groups.google.com/g/...).
-   Mientras la app esté en prueba cerrada, hace falta unirse aquí ANTES de poder descargarla.
+/* Paso 1 mientras la app esté en prueba cerrada: en vez de mandarles al Grupo de Google (mucha gente
+   no completaba ese paso), este enlace abre su programa de correo con un email ya escrito pidiéndonos
+   acceso. Cuando lo recibas, añade ese correo como probador en Play Console (Pruebas → Prueba cerrada →
+   tu lista de testers) y contéstale con el enlace de descarga (ANDROID_URL, más abajo).
    Cuando la app ya sea pública, deja esto vacío ("") y el paso 1 deja de salir. */
-const ANDROID_GRUPO_URL = "https://groups.google.com/g/docentscv-probadores";
+const ANDROID_GRUPO_URL = "mailto:docentscv@gmail.com?subject=" + encodeURIComponent("Quiero probar DocentsCV en Android") + "&body=" + encodeURIComponent("Hola, quiero ser probador de la app de DocentsCV en Android.\n\nMi correo de Google es: \n\n(Escribe aquí el correo de tu cuenta de Google, el mismo que usas en la Play Store)");
 (function () {
   const card = $("android-card"); if (!card || !ANDROID_URL) return;
   if (ES_IOS || ES_STANDALONE) return;   // en iPhone sale su propia tarjeta; dentro de la app ya instalada no hace falta
