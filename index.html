@@ -1990,7 +1990,7 @@ function tarjeta(r, hist, alc, ua) {
     const a = hist[0] || {};
     return `<div class="sc" style="${vars}">${cab}${st(EST_TXT[1])}<div class="sc-b"><p style="margin:.2rem 0;font-size:1.05rem">${a.centro ? `<strong>${esc(a.centro)}</strong> (${esc(a.localidad || "")})` : "Plaza adjudicada"}${a.plaza_tipo ? " · " + (a.plaza_tipo === "vacante" ? "Vacante" : "Sustitución") : ""}</p>${charts(hist)}</div></div>`;
   }
-  if (r.estado === 5) return `<div class="sc" style="${vars}">${cab}${st("Estás desactivado en esta bolsa")}<div class="sc-b">${charts(hist)}</div></div>`;
+  if (r.estado === 5) return `<div class="sc" style="${vars}">${cab}${st("Estás desactivado en esta bolsa")}<div class="sc-b"><p class="note">Tu puesto en la lista sigue siendo el <strong>${r.posicion}</strong>, aunque al estar desactivado no participas en la adjudicación.</p>${charts(hist)}</div></div>`;
   const cambio = ini && ini.posicion !== r.posicion ? ini.posicion - r.posicion : null;
   const otras = [[d["1"], "ya adjudicados"], [d["3"], "no pidieron estas plazas"], [d["4"], "no confirmaron a tiempo"]].filter(x => x[0]).map(x => `${x[0]} ${x[1]}`).join(" · ");
   const ausente = r.fecha < r.ult_tanda ? `<p class="note">Tu bolsa no aparece en las listas posteriores al ${fmtF(r.fecha)}: no hubo plazas ofertadas en ella (o ya tienes plaza en otra bolsa).</p>` : "";
