@@ -1312,7 +1312,7 @@ $("au-go").onclick = async () => {
   msg("Un momento…");
   try {
     if (AUTH_MODE === "login") { const { error } = await sb.auth.signInWithPassword({ email: mail, password: pass }); if (error) throw error; show("apartado"); }
-    else if (AUTH_MODE === "registro") { const { data, error } = await sb.auth.signUp({ email: mail, password: pass, options: { emailRedirectTo: back, data: { acepta_privacidad: new Date().toISOString(), version_privacidad: "2026-10" } } }); if (error) throw error; if (data.session) show("apartado"); else msg("Te hemos enviado un correo. Pulsa el enlace para confirmar tu cuenta y después entra."); }
+    else if (AUTH_MODE === "registro") { const { data, error } = await sb.auth.signUp({ email: mail, password: pass, options: { emailRedirectTo: back, data: { acepta_privacidad: new Date().toISOString(), version_privacidad: "2026-11" } } }); if (error) throw error; if (data.session) show("apartado"); else msg("Te hemos enviado un correo. Pulsa el enlace para confirmar tu cuenta y después entra."); }
     else if (AUTH_MODE === "olvido") { const { error } = await sb.auth.resetPasswordForEmail(mail, { redirectTo: back }); if (error) throw error; msg("Si el correo existe, recibirás un enlace para crear una nueva contraseña."); }
     else { const { error } = await sb.auth.updateUser({ password: pass }); if (error) throw error; RECOVERY = false; show("apartado"); }
   } catch (e) { msg("No se pudo completar: " + errEs(e)); }
