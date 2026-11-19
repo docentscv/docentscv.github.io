@@ -1862,7 +1862,7 @@ function charts(h) {
        + (b ? `<div class="note" style="margin:.4rem 0 0"><strong>Competidores por delante</strong> (más arriba = menos competidores)</div>${b}` : "");
 }
 const fmtH = h => h == null ? "Completa" : String(+h).replace(".", ",");
-function tarjeta(r, hist, alc, ua) {
+function tarjeta(r, hist, alc, ua, xIng) {
   const ini = hist.find(x => x.tipo === "inicio_curso"), d = r.delante || {}, mae = r.cuerpo === "maestros";
   const TEMA = { 1: ["ok", "ok", "🎉", "¡Tienes plaza!"], 2: ["amb", "amb", "⏳", "Sigues compitiendo"], 3: ["blu", "blu", "📋", "Sigues en la lista"], 4: ["red", "red", "⚠️", "No confirmaste a tiempo"], 5: ["gry", "gry", "⏸️", "Desactivado en esta bolsa"] };
   const [cv, , ico, titulo] = TEMA[r.estado] || TEMA[3];
@@ -1880,7 +1880,7 @@ function tarjeta(r, hist, alc, ua) {
   const k = `<div class="sc-k">
     <div><small>Tu puesto</small><b>${r.posicion}</b>${r.sub ? `<span class="note" style="margin:0">${r.sub} entre quienes participan</span>` : ""}</div>
     ${ini ? `<div><small>Inicio de curso</small><b>${ini.posicion}</b>${cambio !== null ? `<em class="${cambio > 0 ? "" : "dn"}">${cambio > 0 ? "↑ subes " + cambio : "↓ bajas " + (-cambio)} puestos</em>` : ""}</div>` : ""}
-    <div><small>Competidores por delante</small><b>${r.x}</b></div></div>`;
+    <div><small>Competidores por delante</small><b>${r.x}</b>${xIng != null && r.x > 0 ? `<span class="note" style="margin:0">${xIng} con el inglés acreditado</span>` : ""}</div></div>`;
   let prob = "";
   if (!mae && r.p_tanda !== null && r.p_tanda !== undefined) {
     const p1 = Number(r.p_tanda), p3 = acum(p1, 3), nv = nivel(p3);
@@ -2179,8 +2179,9 @@ async function situacion() {
   let UA = []; try { UA = (await sb.rpc("mi_ultimo_adjudicado")).data || []; } catch (e) {}
   let ING = null; try { const idi = (await sb.rpc("mi_acreditacion_idiomas")).data || []; ING = idi.find(x => /angl|ingl/i.test(x.idioma || "") && ["B2", "C1", "C2"].includes(x.nivel)) || null; } catch (e) {}
   $("idi-box").innerHTML = ING ? `<p class="note" style="margin:0 0 .6rem"><span class="tag ing">✅ Inglés acreditado · ${esc(ING.nivel)}</span></p>` : "";
+  let COMP_IDI = {}; try { const ci = (await sb.rpc("mi_competidores_idioma")).data || []; COMP_IDI = Object.fromEntries(ci.map(r => [r.lista_id, r.x_ingles])); } catch (e) {}
   $("s-cards").innerHTML = pan.length
-    ? pan.map(r => tarjeta(r, histDe(r), r.cuerpo === "maestros" ? alc : null, UA.find(u => u.lista_id === r.lista_id))).join("")
+    ? pan.map(r => tarjeta(r, histDe(r), r.cuerpo === "maestros" ? alc : null, UA.find(u => u.lista_id === r.lista_id), COMP_IDI[r.lista_id])).join("")
     : '<div class="panel">No hemos encontrado tu nombre en las listas cargadas.</div>';
   oportunidades(pan, esp); difMias(pan, esp);
   const ult = pan.length ? pan.map(r => r.ult_tanda).sort().pop() : null;
