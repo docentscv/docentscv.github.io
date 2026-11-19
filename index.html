@@ -87,6 +87,7 @@ body{padding-bottom:calc(4.9rem + env(safe-area-inset-bottom,0px));overscroll-be
 #msg-dlg{border:0;border-radius:14px;padding:1.1rem;width:min(92vw,30rem);box-shadow:0 10px 40px #0006}#msg-dlg::backdrop{background:#0008}
 #msg-dlg label{display:flex;flex-direction:column;gap:.25rem;margin:.6rem 0;font-size:.92rem}#msg-dlg textarea{min-height:7rem;font:inherit;padding:.5rem;border-radius:8px;border:1px solid var(--line)}
 .dbtn{margin-top:.15rem;padding:.05rem .6rem;border-radius:99px;border:1px solid var(--blu);background:var(--blu-bg);color:var(--blu);font:700 .8rem var(--body);cursor:pointer;white-space:nowrap}
+.dbtn.on{background:var(--blu);color:#fff}
 @media (prefers-reduced-motion:reduce){.view:not([hidden]),#onb .art,.skel::after{animation:none}}
 /* ---------- pulido: inicio y Mi apartado ---------- */
 .home-hero .cta{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1.1rem}
@@ -291,6 +292,8 @@ details.panel[open]>summary{margin-bottom:.8rem}
         <label>Idioma <select id="of-ling"><option value="">Todas</option><option value="no">Sin requisito de idioma</option><option value="ing">En inglés</option><option value="otro">Otro requisito</option></select></label>
         <label>Localidad o centro <input id="of-q" type="search" placeholder="Filtrar"></label>
       </div>
+      <p style="margin:.4rem 0 .2rem"><button type="button" class="dbtn" id="of-vacbtn">☐ Solo vacantes</button> <button type="button" class="dbtn" id="of-distbtn">📍 Ordenar por distancia</button></p>
+      <p class="note" id="of-distnota" style="margin:0 0 .3rem"></p>
       <p class="note" id="of-info" style="margin:.2rem 0 .5rem"></p>
       <p style="margin:.2rem 0 .6rem"><a class="btn" href="https://appweb.edu.gva.es/adjudicacio/init.do?lang=va&conv=201201" target="_blank" rel="noopener" style="text-decoration:none;display:inline-block">📝 Ir a pedir plazas en la web de la GVA</a></p>
       <p style="margin:.2rem 0"><button type="button" class="dbtn" id="of-mapbtn">🗺️ Ver en el mapa</button></p><div id="of-map" class="mapa" hidden></div>
@@ -1167,21 +1170,34 @@ function ofEsp() {
   OFER.rows.filter(r => !cu || r.cuerpo === cu).forEach(r => es.set(r.especialidad_codigo, 1));
   $("of-esp").innerHTML = '<option value="">Todas las especialidades</option>' + [...es.keys()].sort().map(c => `<option value="${esc(c)}">${esc(espNom("", c))}</option>`).join("");
 }
+let OF_SOLO_VAC = false, OF_DIST = false;
 function ofPintar() {
   const cu = $("of-cuerpo").value, es = $("of-esp").value, pv = $("of-prov").value, q = $("of-q").value.trim().toLowerCase(); const lg = $("of-ling").value;
-  const fil = OFER.rows.filter(r => (!cu || r.cuerpo === cu) && (!es || r.especialidad_codigo === es) && (!pv || r.provincia === pv) && lingOk(r, lg) && (!q || ((r.centro || "") + " " + (r.localidad || "")).toLowerCase().includes(q)));
+  let fil = OFER.rows.filter(r => (!cu || r.cuerpo === cu) && (!es || r.especialidad_codigo === es) && (!pv || r.provincia === pv) && lingOk(r, lg) && (!q || ((r.centro || "") + " " + (r.localidad || "")).toLowerCase().includes(q)));
+  if (OF_SOLO_VAC) fil = fil.filter(r => r.tipo === "vacante");
   const nv = fil.filter(r => r.tipo === "vacante").length;
   $("of-info").innerHTML = `<strong>${fil.length}</strong> plaza${fil.length === 1 ? "" : "s"} (${nv} vacante${nv === 1 ? "" : "s"}, ${fil.length - nv} sustitucion${fil.length - nv === 1 ? "" : "es"}). ${ofertaVigente() ? "Se adjudican el " + fmtF(OFER.fecha) + "." : "Adjudicación del " + fmtF(OFER.fecha) + "."}${OFER.version === "prov" ? " Lista provisional." : ""}`;
   const gr = new Map(); fil.forEach(r => { if (!gr.has(r.especialidad_codigo)) gr.set(r.especialidad_codigo, []); gr.get(r.especialidad_codigo).push(r); });
+  const ordenaDist = OF_DIST && DOM;
+  if (ordenaDist) for (const rs of gr.values()) rs.sort((a, b) => (distInfo(a.centro_codigo)?.km ?? 1e9) - (distInfo(b.centro_codigo)?.km ?? 1e9));
   window.__ofFil = fil; mapaRefrescar("of");
   $("of-body").innerHTML = fil.length ? [...gr].map(([e, rs]) => {
     const a = alcanceUlt(e), ctx = a ? (a.p ? ` · en la última tanda (${fmtF(a.f)}) se llegó hasta la posición <strong>${a.p}</strong>` : ` · sin adjudicaciones en la última tanda (${fmtF(a.f)})`) : "";
-    return `<div class="note" style="margin:.9rem 0 .2rem"><strong>${esc(espNom("", e))}</strong> — ${rs.length} plaza${rs.length === 1 ? "" : "s"}${ctx}</div>` + rs.map(r => `<div class="it"><div class="a"><b>${esc(r.centro || r.centro_codigo)}</b><small>${esc(r.localidad || "")}${reqOtra(r)}${obsTxt(r)}${distBtn(r)}${favBtn(r)}</small></div><div class="z tg">${plazaTags(r)}</div></div>`).join("");
+    return `<div class="note" style="margin:.9rem 0 .2rem"><strong>${esc(espNom("", e))}</strong> — ${rs.length} plaza${rs.length === 1 ? "" : "s"}${ctx}</div>` + rs.map(r => `<div class="it"><div class="a"><b>${esc(r.centro || r.centro_codigo)}</b><small>${esc(r.localidad || "")}${reqOtra(r)}${obsTxt(r)}${ordenaDist ? distTxt(r.centro_codigo) : ""}${distBtn(r)}${favBtn(r)}</small></div><div class="z tg">${plazaTags(r)}</div></div>`).join("");
   }).join("") : '<p class="note">No hay plazas con esos filtros.</p>';
+  $("of-distnota").innerHTML = ordenaDist ? "Ordenadas de la más cercana a la más lejana desde tu domicilio (dentro de cada especialidad)." : "";
 }
 $("of-cuerpo").addEventListener("change", () => { ofEsp(); ofPintar(); });
 ["of-esp", "of-prov", "of-ling"].forEach(id => $(id).addEventListener("change", ofPintar));
 $("of-q").addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(ofPintar, 300); });
+$("of-vacbtn").onclick = () => { OF_SOLO_VAC = !OF_SOLO_VAC; $("of-vacbtn").classList.toggle("on", OF_SOLO_VAC); $("of-vacbtn").textContent = OF_SOLO_VAC ? "☑️ Solo vacantes" : "☐ Solo vacantes"; ofPintar(); };
+$("of-distbtn").onclick = async () => {
+  if (!sb) return;
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { show("auth"); authMode("registro"); authAviso("Crea tu cuenta gratis para ordenar las plazas por distancia desde tu domicilio."); return; }
+  if (!DOM) { $("of-distnota").innerHTML = 'Para ordenar por distancia, <button type="button" class="link" id="of-adddom">añade tu domicilio</button>.'; $("of-adddom").onclick = () => cfgAbrir("ajustes"); return; }
+  OF_DIST = !OF_DIST; $("of-distbtn").classList.toggle("on", OF_DIST); $("of-distbtn").textContent = OF_DIST ? "📍 Quitar orden por distancia" : "📍 Ordenar por distancia"; ofPintar();
+};
 
 /* ---------- Mi apartado: última adjudicación ordenada por distancia al domicilio ---------- */
 let UA_N = 100;
