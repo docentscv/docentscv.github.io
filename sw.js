@@ -1,15 +1,22 @@
 /* DocentsCV · service worker mínimo.
    Siempre pide la web a internet (así cualquier cambio llega a todos al momento) y solo guarda una copia
    de la portada para mostrarla si no hay conexión. No guarda datos de la base de datos. */
-const CACHE = 'docentscv-shell-1';
+const CACHE = 'docentscv-shell-2';
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {
   const r = e.request;
   if (r.method !== 'GET' || new URL(r.url).origin !== location.origin) return;
   if (r.mode === 'navigate') {
-    e.respondWith(fetch(r).then(res => { const c = res.clone(); caches.open(CACHE).then(ch => ch.put('/', c)); return res; })
-      .catch(() => caches.match('/').then(m => m || new Response('Sin conexión. Vuelve a intentarlo cuando tengas internet.', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } }))));
+    e.respondWith(fetch(r).then(res => {
+      // Solo guardamos la copia si la respuesta llegó COMPLETA y correcta (status 200).
+      // Si la conexión se corta a mitad de la descarga, res.clone().text() falla y no se guarda nada
+      // a medias; así nunca quedamos con una copia rota sirviéndose para siempre sin conexión.
+      if (res.ok) {
+        res.clone().text().then(texto => caches.open(CACHE).then(ch => ch.put('/', new Response(texto, { headers: res.headers })))).catch(() => {});
+      }
+      return res;
+    }).catch(() => caches.match('/').then(m => m || new Response('Sin conexión. Vuelve a intentarlo cuando tengas internet.', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } }))));
   }
 });
 
