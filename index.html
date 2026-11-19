@@ -409,6 +409,7 @@ details.panel[open]>summary{margin-bottom:.8rem}
     <div id="analisis" hidden>
       <p class="note" id="s-aviso" style="margin:0 0 .6rem"></p>
       <div id="wow" hidden></div>
+      <div id="idi-box"></div>
       <div id="s-cards"></div>
       <div class="panel" id="dc-mi" hidden><h2>Plazas de difícil cobertura en tus bolsas</h2><div id="dc-mi-adj"></div><div id="dc-mi-body"></div></div>
       <div class="panel" id="oport-panel"><h2>Tus oportunidades por centro</h2>
@@ -2176,6 +2177,8 @@ async function situacion() {
   const alc = hayMae && esp.length ? ((await sb.rpc("mi_alcance_maestros")).data || []) : [];
 
   let UA = []; try { UA = (await sb.rpc("mi_ultimo_adjudicado")).data || []; } catch (e) {}
+  let ING = null; try { const idi = (await sb.rpc("mi_acreditacion_idiomas")).data || []; ING = idi.find(x => /angl|ingl/i.test(x.idioma || "") && ["B2", "C1", "C2"].includes(x.nivel)) || null; } catch (e) {}
+  $("idi-box").innerHTML = ING ? `<p class="note" style="margin:0 0 .6rem"><span class="tag ing">✅ Inglés acreditado · ${esc(ING.nivel)}</span></p>` : "";
   $("s-cards").innerHTML = pan.length
     ? pan.map(r => tarjeta(r, histDe(r), r.cuerpo === "maestros" ? alc : null, UA.find(u => u.lista_id === r.lista_id))).join("")
     : '<div class="panel">No hemos encontrado tu nombre en las listas cargadas.</div>';
