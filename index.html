@@ -869,6 +869,7 @@ document.addEventListener("click", ev => { const b = ev.target.closest(".fbtn");
 async function favCard(ac) {
   const box = $("fav-card"); if (!box) return;
   if (!ac || !ac.activo) { box.innerHTML = ""; return; }
+  const abierto = $("fav-panel") ? $("fav-panel").open : false;   // conserva si estaba desplegado al refrescar (p. ej. al quitar un favorito)
   await favCargar(); await Promise.all([cargarOfertas(), cargarDif()]); await geoCargar();
   let seg = []; try { seg = (await sb.rpc("mis_dificil_seguidas")).data || []; } catch (e) {}
   await cargarCentros([...FAV, ...seg.map(x => x.centro_codigo)]);
@@ -885,11 +886,11 @@ async function favCard(ac) {
     const st = adj.has(k) ? `<span style="color:var(--ok)">✔ Adjudicada (${fmtF(DIF.fecha)})</span>` : vivas.has(k) ? `Sigue publicada (${fmtF(DIF.fecha)})` : `Ya no figura en la última publicación`;
     return `<div class="it"><div class="a"><b>${esc(c.nombre || x.centro_codigo || "Centro")}</b><small>${esc(c.localidad || "")} · ${esc(espNom("", x.especialidad_codigo))} · plaza ${esc(x.codigo_plaza)}<br>${st}</small></div><div class="z"><button type="button" class="fbtn on" data-sp="${esc(k)}" data-sc="${esc(x.centro_codigo || "")}" data-sb="${esc(x.cuerpo || "")}">📌 Quitar</button></div></div>`;
   }).join("");
-  box.innerHTML = `<div class="panel" style="margin-top:1rem"><h2 style="margin-top:0">⭐ Mis centros favoritos</h2>
+  box.innerHTML = `<details class="panel" id="fav-panel" style="margin-top:1rem"${abierto ? " open" : ""}><summary>⭐ Mis centros favoritos</summary>
     <p class="note" style="margin:0 0 .5rem">Te avisamos por notificación cuando salgan plazas ofertadas o de difícil cobertura en estos centros. <a href="#" id="fav-notif">Activar notificaciones</a></p>
     <div id="fav-lista">${lista || '<p class="note" style="margin:.3rem 0">Todavía no tienes ninguno. Búscalos aquí o pulsa «☆ Favorito» en las plazas de Consulta.</p>'}</div>
     <div class="filters" style="margin-top:.6rem"><label>Añadir un centro <input id="fav-q" type="search" placeholder="Nombre o localidad" style="min-width:min(16rem,70vw)"></label></div><div id="fav-res"></div>
-    ${segl ? `<h2 style="margin:1rem 0 .2rem">📌 Plazas de difícil cobertura que sigo</h2><div>${segl}</div>` : ""}</div>`;
+    ${segl ? `<h2 style="margin:1rem 0 .2rem">📌 Plazas de difícil cobertura que sigo</h2><div>${segl}</div>` : ""}</details>`;
   $("fav-notif").onclick = ev => { ev.preventDefault(); $("mn-aj").click(); };
   let t = null; $("fav-q").addEventListener("input", () => {
     clearTimeout(t); t = setTimeout(async () => {
@@ -1418,11 +1419,16 @@ async function distCard(ac) {
   box.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 async function refTop(ac) {
-  const box = $("ref-top"); if (!box) return; box.innerHTML = "";
+  const boxTop = $("ref-top"); if (boxTop) boxTop.innerHTML = "";
+  const slot = $("rt-slot"); if (slot) slot.innerHTML = "";
+  const box = slot || boxTop; if (!box) return;   // preferimos el hueco de arriba, junto al nombre; si no existe (sin especialidad/bolsa aún), caemos al de más abajo
   let data; try { data = (await sb.rpc("mi_referidos")).data; } catch (e) {} if (!data || data.gratis) return;
-  const l = refLinks(data.codigo), n = ac && ac.cobro_activo && ac.en_prueba ? ac.dias_restantes : null;
-  box.innerHTML = `<div class="sc" style="--c:var(--ok);--cb:var(--ok-bg);margin-top:1rem"><div class="sc-st"><i>🎁</i><div>${n != null ? "Te " + (n === 1 ? "queda 1 día" : "quedan " + n + " días") + " de prueba: ¡invita a tus compañeros!" : (ac && ac.cobro_activo && !ac.activo) ? "Tu prueba ha terminado, pero aún puedes conseguir la app gratis" : "Invita a tus compañeros y consigue la app gratis"}<small>Si 3 personas se registran con tu código y pagan, tu curso es gratis. Llevas <b>${data.pagados} de ${data.necesarios}</b>.</small></div></div>
-    <div class="sc-b"><div class="filters"><a class="btn" href="${l.wa}" target="_blank" rel="noopener" style="text-decoration:none;background:#1f9d55">WhatsApp</a><a class="btn" href="${l.tg}" target="_blank" rel="noopener" style="text-decoration:none;background:#2a8fd4">Telegram</a><button class="link" id="rt-mas">Ver mi código</button></div></div></div>`;
+  const n = ac && ac.cobro_activo && ac.en_prueba ? ac.dias_restantes : null;
+  const frase = n != null ? `Te ${n === 1 ? "queda 1 día" : "quedan " + n + " días"} de prueba: invita a tus compañeros y consigue la app gratis`
+    : (ac && ac.cobro_activo && !ac.activo) ? "Tu prueba ha terminado: invita a tus compañeros y aún puedes conseguir la app gratis"
+    : "Invita a tus compañeros y consigue la app gratis";
+  // Una sola frase, enlazada: lleva a Ajustes y avisos, donde está la tarjeta completa con el código y los enlaces de WhatsApp/Telegram (refInit)
+  box.innerHTML = `<p class="note" style="margin:.3rem 0;max-width:15rem"><button class="link" id="rt-mas" style="white-space:normal;text-align:left;line-height:1.3">🎁 ${frase}</button></p>`;
   $("rt-mas").onclick = () => cfgAbrir("ajustes");
 }
 $("ref-cons-go").onclick = async () => {
@@ -1534,7 +1540,7 @@ async function renderApartado() {
   bolTxt += profExtra.map(c => { const e = ESPU.find(x => x.codigo === c); return `<span class="tag" style="margin:.15rem .25rem 0 0" title="Añadida por administración: cuenta para los avisos; tu puesto saldrá cuando aparezcas en una lista">${esc(c)} · ${esc(e ? e.nombre : "")} ✍️</span>`; }).join("");
   profMia = [...new Set([...profMia, ...profMan])];
   const pn = (idn.split(",")[1] || idn).trim().toLowerCase().replace(/(^|\s)\S/g, c => c.toUpperCase());
-  $("perfil").innerHTML = `<div class="h">Hola, ${esc(pn)} 👋</div><div class="nm">${esc(idn)}</div>${espTxt || bolTxt ? `<div class="espfila"><div>${espTxt}${bolTxt}</div><button class="link" id="esp-pedir" type="button">✏️ Pedir cambio de especialidad</button></div>` : ""}`;
+  $("perfil").innerHTML = `<div class="h">Hola, ${esc(pn)} 👋</div><div class="nm">${esc(idn)}</div>${espTxt || bolTxt ? `<div class="espfila"><div>${espTxt}${bolTxt}</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:.3rem"><div id="rt-slot"></div><button class="link" id="esp-pedir" type="button">✏️ Pedir cambio de especialidad</button></div></div>` : ""}`;
   if ($("esp-pedir")) $("esp-pedir").onclick = () => espPedir(espMia, profMia);
   $("ajustes").hidden = false; await geoCargar();
   $("ajustes-body").innerHTML = `<p class="note" style="margin:0 0 .4rem">Si hay un error en tu nombre o especialidades, escríbenos para corregirlo.</p>
