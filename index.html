@@ -1052,15 +1052,15 @@ $("bs-q").addEventListener("input", () => { clearTimeout(timer); timer = setTime
 /* ---------- Plazas ofertadas por la Conselleria ---------- */
 let OFER = null;
 async function cargarOfertas() {
-  if (OFER) return OFER;
   try {
     const f = await getJ("plazas_ofertadas?select=fecha,version&order=fecha.desc&limit=1");
     if (!f.length) return (OFER = { fecha: null, rows: [] });
+    if (OFER && OFER.fecha === f[0].fecha && OFER.version === f[0].version) return OFER;   // ya tenemos esta misma lista cargada
     const rows = await getJ(`plazas_ofertadas?select=cuerpo,especialidad_codigo,provincia,localidad,centro_codigo,centro,tipo,detalle,codigo_plaza,req_ling,observ,horas,iti&fecha=eq.${f[0].fecha}&order=especialidad_codigo.asc&limit=1000`);
     await cargarCentros(rows.map(r => r.centro_codigo));
     rows.forEach(r => { const c = CEN[r.centro_codigo]; if (c) { r.centro = c.nombre || r.centro; r.localidad = c.localidad || r.localidad; r.provincia = c.provincia || r.provincia; } });
     return (OFER = { fecha: f[0].fecha, version: f[0].version, rows });
-  } catch (e) { return (OFER = { fecha: null, rows: [] }); }
+  } catch (e) { return OFER || (OFER = { fecha: null, rows: [] }); }   // sin conexión: seguimos con lo que ya teníamos, si había algo
 }
 const ultFechaContinua = () => INST.filter(i => i.tipo === "continua").map(i => i.fecha).sort().pop() || "";
 const ofertaVigente = () => !!(OFER && OFER.fecha && OFER.fecha > ultFechaContinua());
@@ -1088,10 +1088,10 @@ function ofResumen(o) {
 /* ---------- Plazas de difícil cobertura ---------- */
 let DIF = null;
 async function cargarDif() {
-  if (DIF) return DIF;
   try {
     const f = await getJ("plazas_dificil?select=fecha&order=fecha.desc&limit=1");
     if (!f.length) return (DIF = { fecha: null, rows: [] });
+    if (DIF && DIF.fecha === f[0].fecha) return DIF;   // ya tenemos esta misma lista cargada
     const rows = await getJ(`plazas_dificil?select=cuerpo,especialidad_codigo,provincia,localidad,centro_codigo,centro,tipo,detalle,codigo_plaza,req_ling,observ,horas,iti&fecha=eq.${f[0].fecha}&order=especialidad_codigo.asc&limit=1000`);
     await cargarCentros(rows.map(r => r.centro_codigo));
     rows.forEach(r => { const c = CEN[r.centro_codigo]; if (c) { r.centro = c.nombre || r.centro; r.localidad = c.localidad || r.localidad; r.provincia = c.provincia || r.provincia; } });
@@ -1099,7 +1099,7 @@ async function cargarDif() {
     const adj = new Map(); let adjN = 0, adjB = 0;
     try { (await getJ(`v_dificil_adj?select=especialidad_codigo,codigo_plaza,peticion,en_bolsa&fecha=eq.${f[0].fecha}&limit=1000`)).forEach(a => { adj.set(a.especialidad_codigo + "|" + a.codigo_plaza, a); adjN++; if (a.en_bolsa) adjB++; }); } catch (e) {}
     return (DIF = { fecha: f[0].fecha, rows, adj, adjN, adjB });
-  } catch (e) { return (DIF = { fecha: null, rows: [] }); }
+  } catch (e) { return DIF || (DIF = { fecha: null, rows: [] }); }   // sin conexión: seguimos con lo que ya teníamos, si había algo
 }
 const plazaTipo = r => r.tipo === "vacante" ? "Vacante" : /indeterm/i.test(r.detalle || "") ? "Sustitución indeterminada" : /determ/i.test(r.detalle || "") ? "Sustitución determinada" : "Sustitución";
 const lingOk = (r, lg) => { if (!lg) return true; const l = (r.req_ling || "").trim(); return lg === "no" ? !l : lg === "ing" ? /^ING/i.test(l) : !!l && !/^ING/i.test(l); };
